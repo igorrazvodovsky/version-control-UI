@@ -29,6 +29,16 @@ export class TagConcept {
         return Array.from(tags).map((tag) => ({ tag }));
     }
 
+    _getByTag({ tag }: { tag: string }): { target: string }[] {
+        const results: { target: string }[] = [];
+        for (const [target, tags] of this.tagsByTarget.entries()) {
+            if (tags.has(tag)) {
+                results.push({ target });
+            }
+        }
+        return results;
+    }
+
     _getAll(_: Record<PropertyKey, never>): { tag: string }[] {
         const all = new Set<string>();
         for (const tags of this.tagsByTarget.values()) {

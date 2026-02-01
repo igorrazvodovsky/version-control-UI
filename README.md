@@ -262,6 +262,19 @@ See `example.ts` for a complete, runnable example.
 
 ## Debugging
 
+## RealWorld syncs
+
+RealWorld (Conduit) synchronizations live under `syncs/realworld/`. They connect
+`API.request` calls to concept actions and format responses through
+`API.response`. To exercise them locally, run:
+
+```
+deno test syncs/realworld/realworld.test.ts
+```
+
+The tests simulate RealWorld-style API calls (register, create article, favorite,
+comments, tags, delete) and verify that responses are stored in `API` state.
+
 Set logging on the engine to trace flows and matches:
 
 ```ts

@@ -25,6 +25,8 @@ actions
 queries
     _getByTarget (target: String) : (tag: String)
         list tags for target
+    _getByTag (tag: String) : (target: String)
+        list targets that carry tag
     _getAll () : (tag: String)
         list all tags in use
 

@@ -8,4 +8,7 @@ Deno.test("tag operational principle", () => {
     const result = tags._getByTarget({ target: "a1" });
     assertEqual(result.length, 1);
     assertEqual(result[0].tag, "news");
+    const byTag = tags._getByTag({ tag: "news" });
+    assertEqual(byTag.length, 1);
+    assertEqual(byTag[0].target, "a1");
 });
