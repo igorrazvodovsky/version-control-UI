@@ -1,0 +1,39 @@
+<concept_spec>
+
+concept Favorite
+
+purpose
+    to allow users to favorite target items
+
+state
+    a set of Favorites with
+        a user Users
+        a target String
+
+actions
+    favorite (user: Users, target: String) : (user: Users, target: String)
+        add favorite
+        return user and target
+    favorite (user: Users, target: String) : (error: String)
+        if already favorited, return error
+    unfavorite (user: Users, target: String) : (user: Users, target: String)
+        remove favorite
+        return user and target
+    unfavorite (user: Users, target: String) : (error: String)
+        if not favorited, return error
+
+queries
+    _getByUser (user: Users) : (target: String)
+        list targets favorited by user
+    _getByTarget (target: String) : (user: Users)
+        list users who favorited target
+    _countByTarget (target: String) : (count: Number)
+        count favorites for target
+    _isFavorited (user: Users, target: String) : (favorited: Flag)
+        return true if user favorited target
+
+operational principle
+    after favorite (user: u1, target: "a1") : (user: u1, target: "a1")
+    then _countByTarget (target: "a1") shows count 1
+
+</concept_spec>

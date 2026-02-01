@@ -1,0 +1,35 @@
+<concept_spec>
+
+concept Tag
+
+purpose
+    to associate tags with target items
+
+state
+    a set of Taggings with
+        a target String
+        a tag String
+
+actions
+    add (target: String, tag: String) : (target: String)
+        associate tag with target
+        return target
+    add (target: String, tag: String) : (error: String)
+        if tag already associated, return error
+    remove (target: String, tag: String) : (target: String)
+        remove association
+        return target
+    remove (target: String, tag: String) : (error: String)
+        if association missing, return error
+
+queries
+    _getByTarget (target: String) : (tag: String)
+        list tags for target
+    _getAll () : (tag: String)
+        list all tags in use
+
+operational principle
+    after add (target: "a1", tag: "news") : (target: "a1")
+    then _getByTarget (target: "a1") includes tag "news"
+
+</concept_spec>

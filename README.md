@@ -74,6 +74,13 @@ register(input: { user: string; name: string; email: string }):
   | { error: string };
 ```
 
+Tests:
+
+```
+deno test concepts/test
+deno run -A engine/test/run.ts
+```
+
 ## Synchronizations
 
 Synchronizations are TypeScript functions that declare how concept actions

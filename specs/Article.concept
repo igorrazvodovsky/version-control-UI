@@ -1,0 +1,51 @@
+<concept_spec>
+
+concept Article
+
+purpose
+    to create and manage articles authored by users
+
+state
+    a set of Articles with
+        a slug String
+        a title String
+        a description String
+        a body String
+        an author Users
+        a createdAt DateTime
+        an updatedAt DateTime
+
+actions
+    create (article: Articles, slug: String, title: String, description: String, body: String, author: Users) : (article: Articles)
+        add article to articles
+        store fields and timestamps
+        return article
+    create (article: Articles, slug: String, title: String, description: String, body: String, author: Users) : (error: String)
+        if slug is not unique or fields invalid, return error
+    update (article: Articles, title: String, description: String, body: String) : (article: Articles)
+        update title/description/body and updatedAt
+        return article
+    update (article: Articles, title: String, description: String, body: String) : (error: String)
+        if article does not exist, return error
+    delete (article: Articles) : (article: Articles)
+        remove article
+        return article
+    delete (article: Articles) : (error: String)
+        if article does not exist, return error
+
+queries
+    _get (article: Articles) : (article: Articles, slug: String, title: String, description: String, body: String, author: Users, createdAt: DateTime, updatedAt: DateTime)
+        fetch article
+    _getBySlug (slug: String) : (article: Articles)
+        lookup by slug
+    _getByAuthor (author: Users) : (article: Articles)
+        list articles by author
+    _list () : (article: Articles)
+        list all articles
+
+operational principle
+    after create (article: a1, slug: "hello", title: "Hello", description: "Desc", body: "Body", author: u1) : (article: a1)
+    and update (article: a1, title: "Hello 2", description: "Desc 2", body: "Body 2") : (article: a1)
+    then _get (article: a1) shows title "Hello 2"
+
+</concept_spec>

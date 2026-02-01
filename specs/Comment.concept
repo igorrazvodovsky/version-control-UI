@@ -1,0 +1,47 @@
+<concept_spec>
+
+concept Comment
+
+purpose
+    to associate authored comments with a target item
+
+state
+    a set of Comments with
+        a target String
+        an author Users
+        a body String
+        a createdAt DateTime
+        an updatedAt DateTime
+
+actions
+    create (comment: Comments, target: String, author: Users, body: String) : (comment: Comments)
+        add comment to comments
+        store fields and timestamps
+        return comment
+    create (comment: Comments, target: String, author: Users, body: String) : (error: String)
+        if comment already exists or fields invalid, return error
+    update (comment: Comments, body: String) : (comment: Comments)
+        update body and updatedAt
+        return comment
+    update (comment: Comments, body: String) : (error: String)
+        if comment does not exist, return error
+    delete (comment: Comments) : (comment: Comments)
+        remove comment
+        return comment
+    delete (comment: Comments) : (error: String)
+        if comment does not exist, return error
+
+queries
+    _get (comment: Comments) : (comment: Comments, target: String, author: Users, body: String)
+        fetch comment
+    _getByTarget (target: String) : (comment: Comments)
+        list comments for target
+    _getByAuthor (author: Users) : (comment: Comments)
+        list comments by author
+
+operational principle
+    after create (comment: c1, target: "a1", author: u1, body: "hi") : (comment: c1)
+    and update (comment: c1, body: "hello") : (comment: c1)
+    then _get (comment: c1) shows body "hello"
+
+</concept_spec>

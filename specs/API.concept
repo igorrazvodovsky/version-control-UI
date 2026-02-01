@@ -12,24 +12,27 @@ state
         a path String
         a input Json
         a output Json
+        a code Number
 
 actions
     request (request: String, method: String, path: String, input: Json) : (request: String)
         register an incoming request to start a new flow
         return request
-    response (request: String, output: Json) : (request: String)
+    response (request: String, output: Json, code: Number) : (request: String)
         record the output that should be returned to the caller
         return request
+    format (type: String, payload: Json) : (output: Json)
+        format a response payload for a given type
+        return the formatted output
 
 queries
-    _get (request: String) : (request: String, method: String, path: String, input: Json, output: Json)
+    _get (request: String) : (request: String, method: String, path: String, input: Json, output: Json, code: Number)
         fetch a stored request with output
 
 operational principle
     after request (request: r, method: "POST", path: "/quizzes", input: {}) : (request: r)
-    and response (request: r, output: { ok: true }) : (request: r)
+    and response (request: r, output: { ok: true }, code: 200) : (request: r)
     then _get (request: r) shows output { ok: true }
 
 </concept_spec>
-
 
