@@ -2,29 +2,55 @@ import { actions, Frames, Vars } from "../../engine/mod.ts";
 import { asRecord, getString } from "./helpers.ts";
 import { buildTagsPayload, errorOutput } from "./format.ts";
 import type { APIConcept } from "../../concepts/API.ts";
+import type { CurrentBranchConcept } from "../../concepts/CurrentBranch.ts";
 import type { UserConcept } from "../../concepts/User.ts";
 import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { FavoriteConcept } from "../../concepts/Favorite.ts";
 import type { TagConcept } from "../../concepts/Tag.ts";
+
+const CURRENT_BRANCH_ID = "current:default";
 
 function resolveUserId(User: UserConcept, username: string | undefined) {
     if (!username) return undefined;
     return User._getByName({ name: username })[0]?.user;
 }
 
-function resolveArticleId(Article: ArticleConcept, slug: string | undefined) {
-    if (!slug) return undefined;
-    return Article._getBySlug({ slug })[0]?.article;
+function bindCurrentBranch(
+    frames: Frames,
+    CurrentBranch: CurrentBranchConcept,
+    branch: symbol,
+) {
+    return frames.query(
+        CurrentBranch._get,
+        { current: CURRENT_BRANCH_ID },
+        { branch },
+    );
+}
+
+function resolveArticleId(
+    Article: ArticleConcept,
+    branch: string | undefined,
+    slug: string | undefined,
+) {
+    if (!branch || !slug) return undefined;
+    return Article._getBySlug({ branch, slug })[0]?.article;
 }
 
 export function makeFavoriteTagSyncs(
     API: APIConcept,
+    CurrentBranch: CurrentBranchConcept,
     User: UserConcept,
     Article: ArticleConcept,
     Favorite: FavoriteConcept,
     Tag: TagConcept,
 ) {
-    const FavoriteArticle = ({ request, input, user, article }: Vars) => ({
+    const FavoriteArticle = ({
+        request,
+        input,
+        user,
+        article,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -33,12 +59,14 @@ export function makeFavoriteTagSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const userName = getString(payloadValue, "user");
                 if (!slugValue || !userName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const userId = resolveUserId(User, userName);
                 if (!userId) return [];
@@ -49,6 +77,7 @@ export function makeFavoriteTagSyncs(
                 if (already) return [];
                 return [{
                     ...frame,
+                    [branch]: branchId,
                     [user]: userId,
                     [article]: articleId,
                 }];
@@ -56,7 +85,13 @@ export function makeFavoriteTagSyncs(
         then: actions([Favorite.favorite, { user, target: article }]),
     });
 
-    const FavoriteArticleError = ({ request, input, output, code }: Vars) => ({
+    const FavoriteArticleError = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -65,7 +100,9 @@ export function makeFavoriteTagSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const userName = getString(payloadValue, "user");
@@ -76,7 +113,7 @@ export function makeFavoriteTagSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,
@@ -130,7 +167,13 @@ export function makeFavoriteTagSyncs(
         then: actions([API.format, { type: "article", payload }]),
     });
 
-    const UnfavoriteArticle = ({ request, input, user, article }: Vars) => ({
+    const UnfavoriteArticle = ({
+        request,
+        input,
+        user,
+        article,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -139,12 +182,14 @@ export function makeFavoriteTagSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const userName = getString(payloadValue, "user");
                 if (!slugValue || !userName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const userId = resolveUserId(User, userName);
                 if (!userId) return [];
@@ -155,6 +200,7 @@ export function makeFavoriteTagSyncs(
                 if (!already) return [];
                 return [{
                     ...frame,
+                    [branch]: branchId,
                     [user]: userId,
                     [article]: articleId,
                 }];
@@ -190,7 +236,13 @@ export function makeFavoriteTagSyncs(
         then: actions([API.format, { type: "article", payload }]),
     });
 
-    const UnfavoriteArticleError = ({ request, input, output, code }: Vars) => ({
+    const UnfavoriteArticleError = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -199,7 +251,9 @@ export function makeFavoriteTagSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const userName = getString(payloadValue, "user");
@@ -210,7 +264,7 @@ export function makeFavoriteTagSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,

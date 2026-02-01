@@ -12,24 +12,44 @@ import {
     errorOutput,
 } from "./format.ts";
 import type { APIConcept } from "../../concepts/API.ts";
+import type { CurrentBranchConcept } from "../../concepts/CurrentBranch.ts";
 import type { UserConcept } from "../../concepts/User.ts";
 import type { ProfileConcept } from "../../concepts/Profile.ts";
 import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { TagConcept } from "../../concepts/Tag.ts";
 import type { FavoriteConcept } from "../../concepts/Favorite.ts";
 
+const CURRENT_BRANCH_ID = "current:default";
+
 function resolveUserId(User: UserConcept, username: string | undefined) {
     if (!username) return undefined;
     return User._getByName({ name: username })[0]?.user;
 }
 
-function resolveArticleId(Article: ArticleConcept, slug: string | undefined) {
-    if (!slug) return undefined;
-    return Article._getBySlug({ slug })[0]?.article;
+function bindCurrentBranch(
+    frames: Frames,
+    CurrentBranch: CurrentBranchConcept,
+    branch: symbol,
+) {
+    return frames.query(
+        CurrentBranch._get,
+        { current: CURRENT_BRANCH_ID },
+        { branch },
+    );
+}
+
+function resolveArticleId(
+    Article: ArticleConcept,
+    branch: string | undefined,
+    slug: string | undefined,
+) {
+    if (!branch || !slug) return undefined;
+    return Article._getBySlug({ branch, slug })[0]?.article;
 }
 
 export function makeArticleSyncs(
     API: APIConcept,
+    CurrentBranch: CurrentBranchConcept,
     User: UserConcept,
     Profile: ProfileConcept,
     Article: ArticleConcept,
@@ -43,6 +63,7 @@ export function makeArticleSyncs(
         description,
         body,
         author,
+        branch,
         slug,
         article,
     }: Vars) => ({
@@ -52,7 +73,9 @@ export function makeArticleSyncs(
             }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const authorName = getString(payloadValue, "author");
                 const titleValue = getString(payloadValue, "title");
@@ -66,11 +89,15 @@ export function makeArticleSyncs(
                 const slugValue = makeSlug(
                     titleValue,
                     (candidate) =>
-                        Article._getBySlug({ slug: candidate }).length > 0,
+                        Article._getBySlug({
+                            branch: branchId,
+                            slug: candidate,
+                        }).length > 0,
                 );
                 return [{
                     ...frame,
                     [author]: authorId,
+                    [branch]: branchId,
                     [title]: titleValue,
                     [description]: descriptionValue,
                     [body]: bodyValue,
@@ -80,7 +107,7 @@ export function makeArticleSyncs(
             }),
         then: actions([
             Article.create,
-            { article, slug, title, description, body, author },
+            { article, branch, slug, title, description, body, author },
         ]),
     });
 
@@ -172,17 +199,24 @@ export function makeArticleSyncs(
         then: actions([Tag.add, { target: article, tag }]),
     });
 
-    const GetArticle = ({ request, input, payload }: Vars) => ({
+    const TrackArticleAfterCreate = ({ article }: Vars) => ({
+        when: actions([Article.create, {}, { article }]),
+        then: actions([Article.track, { article }]),
+    });
+
+    const GetArticle = ({ request, input, payload, branch }: Vars) => ({
         when: actions(
             [API.request, { method: "GET", path: "/articles/:slug", input }, {
                 request,
             }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const viewerName = getString(payloadValue, "viewer");
                 const viewerId = resolveUserId(User, viewerName);
@@ -199,14 +233,22 @@ export function makeArticleSyncs(
         then: actions([API.format, { type: "article", payload }]),
     });
 
-    const GetArticleNotFound = ({ request, input, output, code }: Vars) => ({
+    const GetArticleNotFound = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [API.request, { method: "GET", path: "/articles/:slug", input }, {
                 request,
             }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 if (!slugValue) {
@@ -216,7 +258,7 @@ export function makeArticleSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,
@@ -237,6 +279,7 @@ export function makeArticleSyncs(
         body,
         article,
         author,
+        branch,
     }: Vars) => ({
         when: actions(
             [API.request, {
@@ -246,7 +289,9 @@ export function makeArticleSyncs(
             }, { request }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
@@ -256,7 +301,7 @@ export function makeArticleSyncs(
                 if (!slugValue || !authorName || !titleValue || !descriptionValue || !bodyValue) {
                     return [];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const authorId = resolveUserId(User, authorName);
                 if (!authorId) return [];
@@ -266,6 +311,7 @@ export function makeArticleSyncs(
                     ...frame,
                     [article]: articleId,
                     [author]: authorId,
+                    [branch]: branchId,
                     [title]: titleValue,
                     [description]: descriptionValue,
                     [body]: bodyValue,
@@ -277,7 +323,12 @@ export function makeArticleSyncs(
         ]),
     });
 
-    const UpdateArticleUnauthorized = ({ request, input, output }: Vars) => ({
+    const UpdateArticleUnauthorized = ({
+        request,
+        input,
+        output,
+        branch,
+    }: Vars) => ({
         when: actions(
             [API.request, {
                 method: "PUT",
@@ -286,12 +337,14 @@ export function makeArticleSyncs(
             }, { request }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
                 if (!slugValue || !authorName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 const authorId = resolveUserId(User, authorName);
                 if (!articleId || !authorId) return [];
                 const articleRow = Article._get({ article: articleId })[0];
@@ -304,7 +357,13 @@ export function makeArticleSyncs(
         then: actions([API.response, { request, output, code: 403 }]),
     });
 
-    const UpdateArticleError = ({ request, input, output, code }: Vars) => ({
+    const UpdateArticleError = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [API.request, {
                 method: "PUT",
@@ -313,7 +372,9 @@ export function makeArticleSyncs(
             }, { request }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
@@ -327,7 +388,7 @@ export function makeArticleSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,
@@ -377,19 +438,21 @@ export function makeArticleSyncs(
         then: actions([API.format, { type: "article", payload }]),
     });
 
-    const PerformDeleteArticle = ({ input, article }: Vars) => ({
+    const PerformDeleteArticle = ({ input, article, branch }: Vars) => ({
         when: actions([
             API.request,
             { method: "DELETE", path: "/articles/:slug", input },
             {},
         ]),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
                 if (!slugValue || !authorName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const authorId = resolveUserId(User, authorName);
                 if (!authorId) return [];
@@ -397,7 +460,7 @@ export function makeArticleSyncs(
                 if (!articleRow || articleRow.author !== authorId) return [];
                 return [{ ...frame, [article]: articleId }];
             }),
-        then: actions([Article.delete, { article }]),
+        then: actions([Article.remove, { article }]),
     });
 
     const DeleteArticle = ({ request, input, output }: Vars) => ({
@@ -407,7 +470,7 @@ export function makeArticleSyncs(
                 path: "/articles/:slug",
                 input,
             }, { request }],
-            [Article.delete, {}, {}],
+            [Article.remove, {}, {}],
         ),
         where: (frames: Frames) =>
             frames.map((frame) => ({
@@ -417,7 +480,12 @@ export function makeArticleSyncs(
         then: actions([API.response, { request, output, code: 200 }]),
     });
 
-    const DeleteArticleUnauthorized = ({ request, input, output }: Vars) => ({
+    const DeleteArticleUnauthorized = ({
+        request,
+        input,
+        output,
+        branch,
+    }: Vars) => ({
         when: actions(
             [API.request, {
                 method: "DELETE",
@@ -426,12 +494,14 @@ export function makeArticleSyncs(
             }, { request }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
                 if (!slugValue || !authorName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 const authorId = resolveUserId(User, authorName);
                 if (!articleId || !authorId) return [];
                 const articleRow = Article._get({ article: articleId })[0];
@@ -444,7 +514,13 @@ export function makeArticleSyncs(
         then: actions([API.response, { request, output, code: 403 }]),
     });
 
-    const DeleteArticleNotFound = ({ request, input, output, code }: Vars) => ({
+    const DeleteArticleNotFound = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [API.request, {
                 method: "DELETE",
@@ -453,7 +529,9 @@ export function makeArticleSyncs(
             }, { request }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
@@ -464,7 +542,7 @@ export function makeArticleSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,
@@ -485,14 +563,16 @@ export function makeArticleSyncs(
         then: actions([API.response, { request, output, code }]),
     });
 
-    const ListArticles = ({ request, input, payload }: Vars) => ({
+    const ListArticles = ({ request, input, payload, branch }: Vars) => ({
         when: actions(
             [API.request, { method: "GET", path: "/articles", input }, {
                 request,
             }],
         ),
         where: (frames: Frames) =>
-            frames.map((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const authorName = getString(payloadValue, "author");
                 const favoritedBy = getString(payloadValue, "favoritedBy");
@@ -500,14 +580,21 @@ export function makeArticleSyncs(
                 const viewerName = getString(payloadValue, "viewer");
                 const viewerId = resolveUserId(User, viewerName);
 
+                const branchArticles = new Set(
+                    Article._listByBranch({ branch: branchId }).map((row) =>
+                        row.article
+                    ),
+                );
+
                 const byAuthor = authorName
                     ? (() => {
                         const authorId = resolveUserId(User, authorName);
                         if (!authorId) return new Set<string>();
                         return new Set(
-                            Article._getByAuthor({ author: authorId }).map((row) =>
-                                row.article
-                            ),
+                            Article._getByAuthor({
+                                branch: branchId,
+                                author: authorId,
+                            }).map((row) => row.article),
                         );
                     })()
                     : undefined;
@@ -543,10 +630,12 @@ export function makeArticleSyncs(
                         )
                         : [];
                 } else {
-                    articleIds = Article._list({}).map((row) => row.article);
+                    articleIds = Array.from(branchArticles);
                 }
 
-                return {
+                articleIds = articleIds.filter((id) => branchArticles.has(id));
+
+                return [{
                     ...frame,
                     [payload]: {
                         request: frame[request],
@@ -554,7 +643,7 @@ export function makeArticleSyncs(
                         viewer: viewerId,
                         code: 200,
                     },
-                };
+                }];
             }),
         then: actions([API.format, { type: "articles", payload }]),
     });
@@ -647,6 +736,7 @@ export function makeArticleSyncs(
         CreateArticle,
         CreateArticleError,
         AddTagsToArticle,
+        TrackArticleAfterCreate,
         CreateArticleFormat,
         GetArticle,
         GetArticleNotFound,

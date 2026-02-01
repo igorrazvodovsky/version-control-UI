@@ -2,23 +2,43 @@ import { actions, Frames, Vars } from "../../engine/mod.ts";
 import { asRecord, getString } from "./helpers.ts";
 import { buildCommentView, buildCommentsPayload, errorOutput } from "./format.ts";
 import type { APIConcept } from "../../concepts/API.ts";
+import type { CurrentBranchConcept } from "../../concepts/CurrentBranch.ts";
 import type { UserConcept } from "../../concepts/User.ts";
 import type { ProfileConcept } from "../../concepts/Profile.ts";
 import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { CommentConcept } from "../../concepts/Comment.ts";
+
+const CURRENT_BRANCH_ID = "current:default";
 
 function resolveUserId(User: UserConcept, username: string | undefined) {
     if (!username) return undefined;
     return User._getByName({ name: username })[0]?.user;
 }
 
-function resolveArticleId(Article: ArticleConcept, slug: string | undefined) {
-    if (!slug) return undefined;
-    return Article._getBySlug({ slug })[0]?.article;
+function bindCurrentBranch(
+    frames: Frames,
+    CurrentBranch: CurrentBranchConcept,
+    branch: symbol,
+) {
+    return frames.query(
+        CurrentBranch._get,
+        { current: CURRENT_BRANCH_ID },
+        { branch },
+    );
+}
+
+function resolveArticleId(
+    Article: ArticleConcept,
+    branch: string | undefined,
+    slug: string | undefined,
+) {
+    if (!branch || !slug) return undefined;
+    return Article._getBySlug({ branch, slug })[0]?.article;
 }
 
 export function makeCommentSyncs(
     API: APIConcept,
+    CurrentBranch: CurrentBranchConcept,
     User: UserConcept,
     Profile: ProfileConcept,
     Article: ArticleConcept,
@@ -31,6 +51,7 @@ export function makeCommentSyncs(
         article,
         author,
         body,
+        branch,
     }: Vars) => ({
         when: actions(
             [
@@ -40,18 +61,21 @@ export function makeCommentSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
                 const bodyValue = getString(payloadValue, "body");
                 if (!slugValue || !authorName || !bodyValue) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const authorId = resolveUserId(User, authorName);
                 if (!authorId) return [];
                 return [{
                     ...frame,
+                    [branch]: branchId,
                     [article]: articleId,
                     [author]: authorId,
                     [body]: bodyValue,
@@ -64,7 +88,13 @@ export function makeCommentSyncs(
         ]),
     });
 
-    const CreateCommentError = ({ request, input, output, code }: Vars) => ({
+    const CreateCommentError = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -73,7 +103,9 @@ export function makeCommentSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const authorName = getString(payloadValue, "author");
@@ -85,7 +117,7 @@ export function makeCommentSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,
@@ -127,7 +159,7 @@ export function makeCommentSyncs(
         then: actions([API.format, { type: "comment", payload }]),
     });
 
-    const ListComments = ({ request, input, payload }: Vars) => ({
+    const ListComments = ({ request, input, payload, branch }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -136,11 +168,13 @@ export function makeCommentSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 if (!slugValue) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 return [{
                     ...frame,
@@ -154,7 +188,13 @@ export function makeCommentSyncs(
         then: actions([API.format, { type: "comments", payload }]),
     });
 
-    const ListCommentsNotFound = ({ request, input, output, code }: Vars) => ({
+    const ListCommentsNotFound = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -163,7 +203,9 @@ export function makeCommentSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 if (!slugValue) {
@@ -173,7 +215,7 @@ export function makeCommentSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,
@@ -186,20 +228,22 @@ export function makeCommentSyncs(
         then: actions([API.response, { request, output, code }]),
     });
 
-    const PerformDeleteComment = ({ input, comment }: Vars) => ({
+    const PerformDeleteComment = ({ input, comment, branch }: Vars) => ({
         when: actions([
             API.request,
             { method: "DELETE", path: "/articles/:slug/comments/:id", input },
             {},
         ]),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const commentId = getString(payloadValue, "commentId");
                 const authorName = getString(payloadValue, "author");
                 if (!slugValue || !commentId || !authorName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) return [];
                 const authorId = resolveUserId(User, authorName);
                 if (!authorId) return [];
@@ -232,7 +276,12 @@ export function makeCommentSyncs(
         then: actions([API.response, { request, output, code: 200 }]),
     });
 
-    const DeleteCommentUnauthorized = ({ request, input, output }: Vars) => ({
+    const DeleteCommentUnauthorized = ({
+        request,
+        input,
+        output,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -241,13 +290,15 @@ export function makeCommentSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const commentId = getString(payloadValue, "commentId");
                 const authorName = getString(payloadValue, "author");
                 if (!slugValue || !commentId || !authorName) return [];
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 const authorId = resolveUserId(User, authorName);
                 if (!articleId || !authorId) return [];
                 const commentRow = Comment._get({ comment: commentId })[0];
@@ -262,7 +313,13 @@ export function makeCommentSyncs(
         then: actions([API.response, { request, output, code: 403 }]),
     });
 
-    const DeleteCommentNotFound = ({ request, input, output, code }: Vars) => ({
+    const DeleteCommentNotFound = ({
+        request,
+        input,
+        output,
+        code,
+        branch,
+    }: Vars) => ({
         when: actions(
             [
                 API.request,
@@ -271,7 +328,9 @@ export function makeCommentSyncs(
             ],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
                 const payloadValue = asRecord(frame[input]);
                 const slugValue = getString(payloadValue, "slug");
                 const commentId = getString(payloadValue, "commentId");
@@ -283,7 +342,7 @@ export function makeCommentSyncs(
                         [code]: 422,
                     }];
                 }
-                const articleId = resolveArticleId(Article, slugValue);
+                const articleId = resolveArticleId(Article, branchId, slugValue);
                 if (!articleId) {
                     return [{
                         ...frame,

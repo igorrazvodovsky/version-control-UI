@@ -1,0 +1,25 @@
+<concept_spec>
+
+concept CurrentBranch
+
+purpose
+    to track the active branch in the working repository
+
+state
+    an element CurrentBranch with
+        a branch Branches
+
+actions
+    set (current: CurrentBranch, branch: Branches) : (current: CurrentBranch)
+        set the current branch
+        return current
+
+queries
+    _get (current: CurrentBranch) : (current: CurrentBranch, branch: Branches)
+        fetch current branch
+
+operational principle
+    after set (current: c, branch: b1) : (current: c)
+    then _get (current: c) shows branch b1
+
+</concept_spec>

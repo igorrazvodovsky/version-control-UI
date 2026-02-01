@@ -1,36 +1,10 @@
-import { Logging, SyncConcept } from "../../engine/mod.ts";
 import { assert, assertEqual } from "../../engine/test/helpers.ts";
-import { APIConcept } from "../../concepts/API.ts";
-import { ArticleConcept } from "../../concepts/Article.ts";
-import { CommentConcept } from "../../concepts/Comment.ts";
-import { FavoriteConcept } from "../../concepts/Favorite.ts";
-import { ProfileConcept } from "../../concepts/Profile.ts";
-import { TagConcept } from "../../concepts/Tag.ts";
-import { UserConcept } from "../../concepts/User.ts";
-import { makeRealWorldSyncs } from "./index.ts";
+import { createRealWorldApp } from "../../realworld_app.ts";
 
-function setup() {
-    const sync = new SyncConcept();
-    sync.logging = Logging.OFF;
-    const concepts = {
-        API: new APIConcept(),
-        User: new UserConcept(),
-        Profile: new ProfileConcept(),
-        Article: new ArticleConcept(),
-        Comment: new CommentConcept(),
-        Tag: new TagConcept(),
-        Favorite: new FavoriteConcept(),
-    };
-    const { API, User, Profile, Article, Comment, Tag, Favorite } =
-        sync.instrument(concepts);
-    sync.register(
-        makeRealWorldSyncs(API, User, Profile, Article, Comment, Tag, Favorite),
-    );
-    return { sync, API, User, Profile, Article, Comment, Tag, Favorite };
-}
+const DEFAULT_BRANCH = "branch:main";
 
 Deno.test("realworld syncs: register and profile", async () => {
-    const { API } = setup();
+    const { API } = await createRealWorldApp();
 
     await API.request({
         request: "r1",
@@ -99,7 +73,7 @@ Deno.test("realworld syncs: register and profile", async () => {
 });
 
 Deno.test("realworld syncs: article lifecycle", async () => {
-    const { API, Article, Comment, Tag, Favorite } = setup();
+    const { API, Article, Comment, Tag, Favorite } = await createRealWorldApp();
 
     await API.request({
         request: "r1",
@@ -141,7 +115,10 @@ Deno.test("realworld syncs: article lifecycle", async () => {
     assertEqual(taggedOut.articlesCount, 1);
     assertEqual(taggedOut.articles[0].slug, "hello-world");
 
-    const articleId = Article._getBySlug({ slug: "hello-world" })[0]?.article;
+    const articleId = Article._getBySlug({
+        branch: DEFAULT_BRANCH,
+        slug: "hello-world",
+    })[0]?.article;
     assert(articleId);
 
     await API.request({

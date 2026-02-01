@@ -5,6 +5,7 @@ Deno.test("article operational principle", () => {
     const articles = new ArticleConcept();
     const create = articles.create({
         article: "a1",
+        branch: "b1",
         slug: "hello",
         title: "Hello",
         description: "Desc",
@@ -22,4 +23,5 @@ Deno.test("article operational principle", () => {
     const result = articles._get({ article: "a1" });
     assertEqual(result.length, 1);
     assertEqual(result[0].title, "Hello 2");
+    assertEqual(result[0].branch, "b1");
 });

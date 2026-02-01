@@ -3,48 +3,90 @@
 concept Article
 
 purpose
-    to create and manage articles authored by users
+    to create and manage branch-scoped working copies of articles
 
 state
     a set of Articles with
+        a branch Branches
         a slug String
         a title String
         a description String
         a body String
         an author Users
+        a status of TRACKED or UNTRACKED or IGNORED or CONFLICT
+        a deleted Flag
         a createdAt DateTime
         an updatedAt DateTime
 
 actions
-    create (article: Articles, slug: String, title: String, description: String, body: String, author: Users) : (article: Articles)
-        add article to articles
+    create (article: Articles, branch: Branches, slug: String, title: String, description: String, body: String, author: Users) : (article: Articles)
+        add article to articles for branch
         store fields and timestamps
+        default status to untracked and deleted to false
         return article
-    create (article: Articles, slug: String, title: String, description: String, body: String, author: Users) : (error: String)
-        if slug is not unique or fields invalid, return error
+    create (article: Articles, branch: Branches, slug: String, title: String, description: String, body: String, author: Users) : (error: String)
+        if slug is not unique within branch or fields invalid, return error
+
+    clone (article: Articles, source: Articles, branch: Branches) : (article: Articles)
+        add article to branch by copying source fields and status
+        return article
+    clone (article: Articles, source: Articles, branch: Branches) : (error: String)
+        if source does not exist or slug not unique within branch, return error
+
     update (article: Articles, title: String, description: String, body: String) : (article: Articles)
         update title/description/body and updatedAt
         return article
     update (article: Articles, title: String, description: String, body: String) : (error: String)
         if article does not exist, return error
-    delete (article: Articles) : (article: Articles)
-        remove article
+
+    remove (article: Articles) : (article: Articles)
+        mark article as deleted
         return article
-    delete (article: Articles) : (error: String)
+    remove (article: Articles) : (error: String)
+        if article does not exist, return error
+
+    track (article: Articles) : (article: Articles)
+        mark article as tracked
+        return article
+    track (article: Articles) : (error: String)
+        if article does not exist, return error
+
+    untrack (article: Articles) : (article: Articles)
+        mark article as untracked
+        return article
+    untrack (article: Articles) : (error: String)
+        if article does not exist, return error
+
+    ignore (article: Articles) : (article: Articles)
+        mark article as ignored
+        return article
+    ignore (article: Articles) : (error: String)
+        if article does not exist, return error
+
+    markConflict (article: Articles) : (article: Articles)
+        mark article as in conflict
+        return article
+    markConflict (article: Articles) : (error: String)
+        if article does not exist, return error
+
+    resolveConflict (article: Articles) : (article: Articles)
+        mark article as tracked
+        return article
+    resolveConflict (article: Articles) : (error: String)
         if article does not exist, return error
 
 queries
-    _get (article: Articles) : (article: Articles, slug: String, title: String, description: String, body: String, author: Users, createdAt: DateTime, updatedAt: DateTime)
+    _get (article: Articles) : (article: Articles, branch: Branches, slug: String, title: String, description: String, body: String, author: Users, status: String, deleted: Flag, createdAt: DateTime, updatedAt: DateTime)
         fetch article
-    _getBySlug (slug: String) : (article: Articles)
-        lookup by slug
-    _getByAuthor (author: Users) : (article: Articles)
-        list articles by author
-    _list () : (article: Articles)
-        list all articles
+    _getBySlug (branch: Branches, slug: String) : (article: Articles)
+        lookup by slug within branch
+    _getByAuthor (branch: Branches, author: Users) : (article: Articles)
+        list articles by author within branch
+    _listByBranch (branch: Branches) : (article: Articles)
+        list articles for branch
 
 operational principle
-    after create (article: a1, slug: "hello", title: "Hello", description: "Desc", body: "Body", author: u1) : (article: a1)
+    after create (article: a1, branch: b1, slug: "hello", title: "Hello", description: "Desc", body: "Body", author: u1) : (article: a1)
     and update (article: a1, title: "Hello 2", description: "Desc 2", body: "Body 2") : (article: a1)
     then _get (article: a1) shows title "Hello 2"
 

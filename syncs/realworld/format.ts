@@ -125,7 +125,7 @@ export function buildArticleView(
     viewerId?: string,
 ): ArticleView | null {
     const articleRow = Article._get({ article: articleId })[0];
-    if (!articleRow) return null;
+    if (!articleRow || articleRow.deleted) return null;
     const authorId = articleRow.author;
     const authorRow = User._get({ user: authorId })[0];
     const authorName = authorRow ? authorRow.name : authorId;

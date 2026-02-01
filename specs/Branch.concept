@@ -1,0 +1,42 @@
+<concept_spec>
+
+concept Branch
+
+purpose
+    to represent named lines of development and their heads
+
+state
+    a set of Branches with
+        a name String
+        an optional head Commits
+        a createdAt DateTime
+
+actions
+    create (branch: Branches, name: String) : (branch: Branches)
+        add branch with name and timestamp
+        return branch
+    create (branch: Branches, name: String) : (error: String)
+        if name is not unique or invalid, return error
+
+    setHead (branch: Branches, commit: Commits) : (branch: Branches)
+        update head for branch
+        return branch
+    setHead (branch: Branches, commit: Commits) : (error: String)
+        if branch does not exist, return error
+
+queries
+    _get (branch: Branches) : (branch: Branches, name: String, head: Commits)
+        fetch branch
+    _getByName (name: String) : (branch: Branches)
+        lookup branch by name
+    _list () : (branch: Branches)
+        list all branches
+    _getHead (branch: Branches) : (commit: Commits)
+        fetch branch head
+
+operational principle
+    after create (branch: b1, name: "main") : (branch: b1)
+    and setHead (branch: b1, commit: c1) : (branch: b1)
+    then _getHead (branch: b1) shows commit c1
+
+</concept_spec>
