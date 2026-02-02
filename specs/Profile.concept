@@ -20,12 +20,15 @@ actions
     update (profile: Profiles, bio: String) : (profile: Profiles)
         update profile with bio
         return profile
+    update (profile: Profiles, bio: String) : (error: String)
+        if profile does not exist, describe error
+        return error
     update (profile: Profiles, image: String) : (profile: Profiles)
         if image is valid (URL, base64, etc.)
         update profile with image
         return profile
     update (profile: Profiles, image: String) : (error: String)
-        if image is invalid, describe error
+        if profile does not exist or image is invalid, describe error
         return error
 
 queries

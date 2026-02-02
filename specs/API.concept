@@ -17,6 +17,7 @@ state
 actions
     request (request: String, method: String, path: String, input: Json) : (request: String)
         register an incoming request to start a new flow
+        if request already exists, update method/path/input and clear output/code
         return request
     response (request: String, output: Json, code: Number) : (request: String)
         record the output that should be returned to the caller
@@ -35,4 +36,3 @@ operational principle
     then _get (request: r) shows output { ok: true }
 
 </concept_spec>
-

@@ -339,12 +339,3 @@ curl -X POST http://localhost:8080/users \\
   -d '{"username":"alice","email":"a@b.com"}'
 ```
 
-### License
-
-Copyright (c) MIT CSAIL. All rights reserved.
-
-This project is licensed under the Creative Commons
-Attribution-NonCommercial-ShareAlike 4.0 International.
-
-- SPDX: CC-BY-NC-SA-4.0
-- https://creativecommons.org/licenses/by-nc-sa/4.0/

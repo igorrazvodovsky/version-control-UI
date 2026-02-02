@@ -50,10 +50,24 @@ export class CommentConcept {
         return { comment };
     }
 
-    _get({ comment }: { comment: string }): { comment: string; target: string; author: string; body: string }[] {
+    _get({ comment }: { comment: string }): {
+        comment: string;
+        target: string;
+        author: string;
+        body: string;
+        createdAt: string;
+        updatedAt: string;
+    }[] {
         const existing = this.comments.get(comment);
         if (!existing) return [];
-        return [{ comment, target: existing.target, author: existing.author, body: existing.body }];
+        return [{
+            comment,
+            target: existing.target,
+            author: existing.author,
+            body: existing.body,
+            createdAt: existing.createdAt,
+            updatedAt: existing.updatedAt,
+        }];
     }
 
     _getByTarget({ target }: { target: string }): { comment: string }[] {

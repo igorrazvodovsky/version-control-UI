@@ -15,4 +15,6 @@ Deno.test("comment operational principle", () => {
     const result = comments._get({ comment: "c1" });
     assertEqual(result.length, 1);
     assertEqual(result[0].body, "hello");
+    assertEqual(result[0].createdAt.length > 0, true);
+    assertEqual(result[0].updatedAt.length > 0, true);
 });

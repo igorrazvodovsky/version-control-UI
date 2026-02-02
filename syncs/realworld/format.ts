@@ -215,8 +215,8 @@ export function buildCommentView(
     }
     return {
         id: commentId,
-        createdAt: "",
-        updatedAt: "",
+        createdAt: commentRow.createdAt,
+        updatedAt: commentRow.updatedAt,
         body: commentRow.body,
         author: {
             username: authorName,

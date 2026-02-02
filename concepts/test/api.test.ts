@@ -21,3 +21,29 @@ Deno.test("api operational principle", () => {
     assertEqual((result[0].output as { ok: boolean }).ok, true);
     assertEqual(result[0].code, 200);
 });
+
+Deno.test("api request reuse clears prior response", () => {
+    const api = new APIConcept();
+    api.request({
+        request: "r1",
+        method: "GET",
+        path: "/health",
+        input: {},
+    });
+    api.response({
+        request: "r1",
+        output: { ok: true },
+        code: 200,
+    });
+
+    api.request({
+        request: "r1",
+        method: "POST",
+        path: "/other",
+        input: { next: true },
+    });
+
+    const result = api._get({ request: "r1" })[0];
+    assertEqual(result.output, null);
+    assertEqual(result.code, 0);
+});

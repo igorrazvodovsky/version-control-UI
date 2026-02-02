@@ -15,10 +15,7 @@ export class ProfileConcept {
     update(input: { profile: string; bio: string } | { profile: string; image: string }) {
         const existing = this.profiles.get(input.profile);
         if (!existing) {
-            if ("image" in input) {
-                return { error: "profile not found" };
-            }
-            return { profile: input.profile };
+            return { error: "profile not found" };
         }
         if ("bio" in input) {
             existing.bio = input.bio;

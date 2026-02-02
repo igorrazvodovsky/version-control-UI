@@ -32,7 +32,7 @@ actions
         if comment does not exist, return error
 
 queries
-    _get (comment: Comments) : (comment: Comments, target: String, author: Users, body: String)
+    _get (comment: Comments) : (comment: Comments, target: String, author: Users, body: String, createdAt: DateTime, updatedAt: DateTime)
         fetch comment
     _getByTarget (target: String) : (comment: Comments)
         list comments for target

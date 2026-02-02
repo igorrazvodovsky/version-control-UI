@@ -164,9 +164,13 @@ Deno.test("realworld syncs: article lifecycle", async () => {
     const commentResp = API._get({ request: "r5" })[0];
     assert(commentResp);
     assertEqual(commentResp.code, 201);
-    const commentOut = commentResp.output as { comment: { id: string; body: string } };
+    const commentOut = commentResp.output as {
+        comment: { id: string; body: string; createdAt: string; updatedAt: string };
+    };
     assert(commentOut.comment.id);
     assertEqual(commentOut.comment.body, "Hi");
+    assert(commentOut.comment.createdAt.length > 0);
+    assert(commentOut.comment.updatedAt.length > 0);
 
     await API.request({
         request: "r6",

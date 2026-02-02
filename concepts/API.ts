@@ -26,6 +26,8 @@ export class APIConcept {
             existing.method = method;
             existing.path = path;
             existing.input = input;
+            existing.output = null;
+            existing.code = 0;
             return { request };
         }
         this.requests.set(request, {

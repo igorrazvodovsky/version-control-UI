@@ -14,3 +14,11 @@ Deno.test("profile operational principle", () => {
     assertEqual(result[0].bio, "Hello world");
     assertEqual(result[0].image, "pic.jpg");
 });
+
+Deno.test("profile update missing profile returns error", () => {
+    const profiles = new ProfileConcept();
+    const bioUpdate = profiles.update({ profile: "missing", bio: "Hello" });
+    assertEqual("error" in bioUpdate, true);
+    const imageUpdate = profiles.update({ profile: "missing", image: "pic.jpg" });
+    assertEqual("error" in imageUpdate, true);
+});
