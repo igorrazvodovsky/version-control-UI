@@ -284,6 +284,24 @@ import { Logging } from "./engine/mod.ts";
 // Sync.logging = Logging.VERBOSE; // detailed provenance
 ```
 
+## HTTP adapter
+
+An HTTP adapter is available via `server.ts` to expose both RealWorld and
+Gitless routes over HTTP. Start the server with:
+
+```
+deno run -A server.ts
+```
+
+By default it listens on port 8080. Override with `PORT` if needed. Example
+request:
+
+```
+curl -X POST http://localhost:8080/users \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"alice","email":"a@b.com"}'
+```
+
 ### License
 
 Copyright (c) MIT CSAIL. All rights reserved.
