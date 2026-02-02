@@ -20,7 +20,6 @@ export type Article = {
 
 export type ArticlesResponse = {
   articles: Article[];
-  articlesCount: number;
 };
 
 export const DEFAULT_API_BASE_URL = "http://localhost:8080";
@@ -44,7 +43,7 @@ export async function fetchArticles(
   }
 
   const data = await response.json() as ArticlesResponse;
-  if (!Array.isArray(data.articles) || typeof data.articlesCount !== "number") {
+  if (!Array.isArray(data.articles)) {
     throw new Error("Invalid articles response");
   }
 
