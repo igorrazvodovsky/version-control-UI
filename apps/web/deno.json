@@ -1,0 +1,10 @@
+{
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "deno run -A npm:next@16.1.6 dev",
+    "build": "deno run -A npm:next@16.1.6 build",
+    "start": "deno run -A npm:next@16.1.6 start",
+    "lint": "deno run -A npm:next@16.1.6 lint",
+    "test": "deno test -A"
+  }
+}

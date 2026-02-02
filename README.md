@@ -81,6 +81,46 @@ deno test concepts/test
 deno run -A engine/test/run.ts
 ```
 
+## HTTP API + Frontend
+
+The backend exposes RealWorld HTTP endpoints via `server.ts`. A minimal Next.js
+frontend lives in `apps/web` and renders the articles list from `GET /articles`.
+
+Start the backend (from repo root):
+
+```
+deno run -A server.ts
+```
+
+Start the frontend (from `apps/web/`):
+
+```
+deno install --allow-scripts
+deno task dev
+```
+
+Then open `http://localhost:3000/`. To point at a different API host, set
+`NEXT_PUBLIC_API_BASE_URL` (default is `http://localhost:8080`).
+
+Manual validation checklist:
+- Start the backend and frontend as above.
+- Visit `http://localhost:3000/` and confirm the articles list renders.
+- If no articles exist yet, confirm the empty-state message appears.
+
+### Seed demo articles
+
+With the backend running, you can seed demo users + articles:
+
+```
+deno run -A scripts/seed_articles.ts
+```
+
+Override the API host with `API_BASE_URL` if needed:
+
+```
+API_BASE_URL=http://localhost:8080 deno run -A scripts/seed_articles.ts
+```
+
 ## Synchronizations
 
 Synchronizations are TypeScript functions that declare how concept actions

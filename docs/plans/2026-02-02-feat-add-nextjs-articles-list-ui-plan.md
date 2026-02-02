@@ -39,13 +39,13 @@ The repository already exposes RealWorld HTTP endpoints via `server.ts`, but the
 
 ## Acceptance Criteria
 
-- [ ] A new Next.js project exists under `apps/web/` and starts with `deno task dev`.
-- [ ] The `/` page loads data from `GET /articles` and renders a list of article cards.
-- [ ] Empty state: show a friendly message when `articlesCount` is 0.
-- [ ] Error state: show a clear error message on non-200 responses or network failure.
-- [ ] API base URL is configurable via `NEXT_PUBLIC_API_BASE_URL` (default to `http://localhost:8080`).
-- [ ] README includes local run instructions for backend and frontend.
-- [ ] Manual validation steps documented (backend running + UI fetch success).
+- [x] A new Next.js project exists under `apps/web/` and starts with `deno task dev`.
+- [x] The `/` page loads data from `GET /articles` and renders a list of article cards.
+- [x] Empty state: show a friendly message when `articlesCount` is 0.
+- [x] Error state: show a clear error message on non-200 responses or network failure.
+- [x] API base URL is configurable via `NEXT_PUBLIC_API_BASE_URL` (default to `http://localhost:8080`).
+- [x] README includes local run instructions for backend and frontend.
+- [x] Manual validation steps documented (backend running + UI fetch success).
 
 ## Success Metrics
 

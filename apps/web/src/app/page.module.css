@@ -1,0 +1,186 @@
+.page {
+  min-height: 100vh;
+  background: #f6f6f6;
+  color: #111;
+  display: flex;
+  justify-content: center;
+  padding: 48px 20px 64px;
+  font-family: var(--font-geist-sans);
+}
+
+.main {
+  width: 100%;
+  max-width: 960px;
+  background: #fff;
+  border-radius: 24px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.06);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header h1 {
+  font-size: 36px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.kicker {
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #888;
+}
+
+.subhead {
+  color: #555;
+  font-size: 16px;
+}
+
+.list {
+  list-style: none;
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  border: 1px solid #ececec;
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: grid;
+  gap: 12px;
+  background: #fff;
+}
+
+.cardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardHeader h2 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.slug {
+  color: #777;
+  font-size: 14px;
+}
+
+.description {
+  color: #444;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 13px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  background: #f1f1f1;
+  color: #444;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.empty {
+  border: 1px dashed #d9d9d9;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  color: #666;
+  background: #fafafa;
+}
+
+.error {
+  border: 1px solid #f0c2c2;
+  background: #fff7f7;
+  color: #a10012;
+  border-radius: 16px;
+  padding: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.hint {
+  color: #8a4b52;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .main {
+    padding: 28px 20px;
+  }
+
+  .meta {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    background: #0f0f0f;
+    color: #f5f5f5;
+  }
+
+  .main {
+    background: #151515;
+    box-shadow: none;
+  }
+
+  .card {
+    background: #111;
+    border-color: #2a2a2a;
+  }
+
+  .slug,
+  .subhead,
+  .meta {
+    color: #b6b6b6;
+  }
+
+  .description {
+    color: #ddd;
+  }
+
+  .tag {
+    background: #222;
+    color: #ddd;
+  }
+
+  .empty {
+    background: #1b1b1b;
+    border-color: #2a2a2a;
+    color: #cfcfcf;
+  }
+
+  .error {
+    background: #2a1114;
+    border-color: #5c2027;
+    color: #ffc7cd;
+  }
+
+  .hint {
+    color: #f1b0b6;
+  }
+}
