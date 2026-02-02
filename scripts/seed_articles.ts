@@ -76,15 +76,25 @@ const articles: SeedArticle[] = [
 
 async function requestJson(path: string, init: RequestInit = {}) {
   const url = new URL(path, API_BASE_URL).toString();
+  const headers = new Headers(init.headers);
+  const hasBody = init.body !== undefined && init.body !== null;
+  if (hasBody && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   const response = await fetch(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
+    headers,
   });
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const trimmed = text.trim();
+  let data: unknown = null;
+  if (trimmed) {
+    try {
+      data = JSON.parse(trimmed);
+    } catch {
+      data = trimmed;
+    }
+  }
   return { response, data };
 }
 
@@ -98,6 +108,7 @@ function getErrorMessages(payload: ApiError | null): string[] {
 async function ensureGitlessInit() {
   const { response, data } = await requestJson("/gitless/init", {
     method: "POST",
+    body: JSON.stringify({}),
   });
 
   if (!response.ok) {
