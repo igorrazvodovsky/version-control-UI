@@ -202,7 +202,7 @@ Response shapes must align with RealWorld JSON (minus auth and follow concepts).
 
 ## Change Log
 
-2026-02-01: Initial RealWorld synchronizations ExecPlan created in `docs/plans/realworld-syncs.md`.
+2026-02-01: Initial RealWorld synchronizations ExecPlan created in `docs/plans/2026-02-01-basic-syncs.md`.
 2026-02-01: Revised plan to clarify path templates, slug rules, and formatting requirements, and to align narrative sections with PLANS.md.
 2026-02-01: Revised plan to split syncs into multiple modules under `syncs/realworld/` and add an index entry point.
 2026-02-01: Updated plan to reflect tag filtering, /user endpoints, error normalization, and shared formatting helpers.

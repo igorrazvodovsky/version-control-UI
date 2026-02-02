@@ -262,9 +262,7 @@ See `example.ts` for a complete, runnable example.
 
 ## Debugging
 
-## RealWorld syncs
-
-RealWorld (Conduit) synchronizations live under `syncs/realworld/`. They connect
+Synchronizations live under `syncs/`. They connect
 `API.request` calls to concept actions and format responses through
 `API.response`. To exercise them locally, run:
 
@@ -286,8 +284,7 @@ import { Logging } from "./engine/mod.ts";
 
 ## HTTP adapter
 
-An HTTP adapter is available via `server.ts` to expose both RealWorld and
-Gitless routes over HTTP. Start the server with:
+An HTTP adapter is available via `server.ts`. Start the server with:
 
 ```
 deno run -A server.ts
