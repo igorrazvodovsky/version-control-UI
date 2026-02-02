@@ -57,8 +57,13 @@ export class ArticleConcept {
             return { error: "article already exists" };
         }
         const branchSlugs = this.getBranchSlugMap(trimmedBranch);
-        if (branchSlugs.has(trimmedSlug)) {
-            return { error: "slug not unique" };
+        const existingSlugId = branchSlugs.get(trimmedSlug);
+        if (existingSlugId) {
+            const existingSlugRow = this.articles.get(existingSlugId);
+            if (existingSlugRow && !existingSlugRow.deleted) {
+                return { error: "slug not unique" };
+            }
+            branchSlugs.delete(trimmedSlug);
         }
         const now = new Date().toISOString();
         this.articles.set(article, {
@@ -98,8 +103,13 @@ export class ArticleConcept {
             return { error: "article already exists" };
         }
         const branchSlugs = this.getBranchSlugMap(trimmedBranch);
-        if (branchSlugs.has(sourceRow.slug)) {
-            return { error: "slug not unique" };
+        const existingSlugId = branchSlugs.get(sourceRow.slug);
+        if (existingSlugId) {
+            const existingSlugRow = this.articles.get(existingSlugId);
+            if (existingSlugRow && !existingSlugRow.deleted) {
+                return { error: "slug not unique" };
+            }
+            branchSlugs.delete(sourceRow.slug);
         }
         this.articles.set(article, {
             branch: trimmedBranch,
@@ -150,6 +160,13 @@ export class ArticleConcept {
         if (!existing.deleted) {
             existing.deleted = true;
             existing.updatedAt = new Date().toISOString();
+        }
+        const branchSlugs = this.bySlug.get(existing.branch);
+        if (branchSlugs?.get(existing.slug) === article) {
+            branchSlugs.delete(existing.slug);
+            if (branchSlugs.size === 0) {
+                this.bySlug.delete(existing.branch);
+            }
         }
         return { article };
     }

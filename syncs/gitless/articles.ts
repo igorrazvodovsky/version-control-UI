@@ -6,6 +6,8 @@ import type { BranchConcept } from "../../concepts/Branch.ts";
 import type { CommitConcept } from "../../concepts/Commit.ts";
 import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { ArticleSnapshotConcept } from "../../concepts/ArticleSnapshot.ts";
+import type { TagConcept } from "../../concepts/Tag.ts";
+import type { TagSnapshotConcept } from "../../concepts/TagSnapshot.ts";
 
 const CURRENT_BRANCH_ID = "current:default";
 const DEFAULT_BRANCH_ID = "branch:main";
@@ -35,6 +37,8 @@ export function makeGitlessArticleSyncs(
     Commit: CommitConcept,
     Article: ArticleConcept,
     ArticleSnapshot: ArticleSnapshotConcept,
+    Tag: TagConcept,
+    TagSnapshot: TagSnapshotConcept,
 ) {
     const InitBranchCreate = ({ request, branch, name }: Vars) => ({
         when: actions(
@@ -192,6 +196,13 @@ export function makeGitlessArticleSyncs(
                     }];
                 }),
         then: actions([Article.clone, { article, source: sourceArticle, branch }]),
+    });
+
+    const CloneTagsForArticle = ({ article, source, tag }: Vars) => ({
+        when: actions([Article.clone, { article, source }, { article }]),
+        where: (frames: Frames) =>
+            frames.query(Tag._getByTarget, { target: source }, { tag }),
+        then: actions([Tag.add, { target: article, tag }]),
     });
 
     const SwitchBranch = ({ request, input, branch, output, code }: Vars) => ({
@@ -443,6 +454,26 @@ export function makeGitlessArticleSyncs(
         ]),
     });
 
+    const CaptureTagSnapshots = ({ branch, commit, article, tag, snapshot }: Vars) => ({
+        when: actions([Commit.create, { branch, commit }, { commit }]),
+        where: (frames: Frames) =>
+            frames
+                .query(Article._listByBranch, { branch }, { article })
+                .flatMap((frame) => {
+                    const articleId = frame[article];
+                    if (typeof articleId !== "string") return [];
+                    const row = Article._get({ article: articleId })[0];
+                    if (!row || row.status !== "TRACKED") return [];
+                    const tags = Tag._getByTarget({ target: articleId });
+                    return tags.map((tagRow) => ({
+                        ...frame,
+                        [snapshot]: crypto.randomUUID(),
+                        [tag]: tagRow.tag,
+                    }));
+                }),
+        then: actions([TagSnapshot.capture, { snapshot, commit, article, tag }]),
+    });
+
     return {
         InitBranchCreate,
         InitBranchSetCurrent,
@@ -451,6 +482,7 @@ export function makeGitlessArticleSyncs(
         CreateBranchExists,
         CreateBranchResponse,
         CloneArticlesOnBranchCreate,
+        CloneTagsForArticle,
         SwitchBranch,
         SwitchBranchMissing,
         SwitchBranchNotFound,
@@ -462,5 +494,6 @@ export function makeGitlessArticleSyncs(
         CommitResponse,
         AdvanceBranchHead,
         CaptureArticleSnapshots,
+        CaptureTagSnapshots,
     } as const;
 }

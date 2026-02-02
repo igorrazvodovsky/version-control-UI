@@ -9,6 +9,7 @@ import { CurrentBranchConcept } from "./concepts/CurrentBranch.ts";
 import { FavoriteConcept } from "./concepts/Favorite.ts";
 import { ProfileConcept } from "./concepts/Profile.ts";
 import { TagConcept } from "./concepts/Tag.ts";
+import { TagSnapshotConcept } from "./concepts/TagSnapshot.ts";
 import { UserConcept } from "./concepts/User.ts";
 import { makeGitlessSyncs } from "./syncs/gitless/index.ts";
 import { makeRealWorldSyncs } from "./syncs/realworld/index.ts";
@@ -23,6 +24,7 @@ export async function createRealWorldApp() {
         Commit: new CommitConcept(),
         Article: new ArticleConcept(),
         ArticleSnapshot: new ArticleSnapshotConcept(),
+        TagSnapshot: new TagSnapshotConcept(),
         Comment: new CommentConcept(),
         Tag: new TagConcept(),
         Favorite: new FavoriteConcept(),
@@ -36,6 +38,7 @@ export async function createRealWorldApp() {
         Commit,
         Article,
         ArticleSnapshot,
+        TagSnapshot,
         Comment,
         Tag,
         Favorite,
@@ -51,6 +54,8 @@ export async function createRealWorldApp() {
             Commit,
             Article,
             ArticleSnapshot,
+            Tag,
+            TagSnapshot,
         ),
         ...makeRealWorldSyncs(
             API,
@@ -79,6 +84,7 @@ export async function createRealWorldApp() {
         Commit,
         Article,
         ArticleSnapshot,
+        TagSnapshot,
         Comment,
         Tag,
         Favorite,

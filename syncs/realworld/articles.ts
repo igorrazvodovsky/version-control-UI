@@ -20,6 +20,13 @@ import type { TagConcept } from "../../concepts/Tag.ts";
 import type { FavoriteConcept } from "../../concepts/Favorite.ts";
 
 const CURRENT_BRANCH_ID = "current:default";
+const ARTICLE_BRANCH_ENDPOINTS = new Set([
+    "POST /articles",
+    "GET /articles/:slug",
+    "PUT /articles/:slug",
+    "DELETE /articles/:slug",
+    "GET /articles",
+]);
 
 function resolveUserId(User: UserConcept, username: string | undefined) {
     if (!username) return undefined;
@@ -111,14 +118,14 @@ export function makeArticleSyncs(
         ]),
     });
 
-    const CreateArticleError = ({ request, input, output, code }: Vars) => ({
+    const CreateArticleError = ({ request, input, output, code, branch }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/articles", input }, {
                 request,
             }],
         ),
         where: (frames: Frames) =>
-            frames.flatMap((frame) => {
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
                 const payloadValue = asRecord(frame[input]);
                 const authorName = getString(payloadValue, "author");
                 const titleValue = getString(payloadValue, "title");
@@ -147,6 +154,30 @@ export function makeArticleSyncs(
                     }];
                 }
                 return [];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const ArticleCurrentBranchMissing = ({ request, method, path, output, code }: Vars) => ({
+        when: actions([API.request, { method, path }, { request }]),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const methodValue = frame[method];
+                const pathValue = frame[path];
+                if (typeof methodValue !== "string" || typeof pathValue !== "string") {
+                    return [];
+                }
+                if (!ARTICLE_BRANCH_ENDPOINTS.has(`${methodValue} ${pathValue}`)) {
+                    return [];
+                }
+                const branchId =
+                    CurrentBranch._get({ current: CURRENT_BRANCH_ID })[0]?.branch;
+                if (branchId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("current branch not set"),
+                    [code]: 409,
+                }];
             }),
         then: actions([API.response, { request, output, code }]),
     });
@@ -733,6 +764,7 @@ export function makeArticleSyncs(
     });
 
     return {
+        ArticleCurrentBranchMissing,
         CreateArticle,
         CreateArticleError,
         AddTagsToArticle,

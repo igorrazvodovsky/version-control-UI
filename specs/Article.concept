@@ -40,7 +40,7 @@ actions
         if article does not exist, return error
 
     remove (article: Articles) : (article: Articles)
-        mark article as deleted
+        mark article as deleted and release slug for reuse
         return article
     remove (article: Articles) : (error: String)
         if article does not exist, return error

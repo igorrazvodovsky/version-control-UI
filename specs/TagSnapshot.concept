@@ -1,0 +1,29 @@
+<concept_spec>
+
+concept TagSnapshot
+
+purpose
+    to capture tag associations for a commit
+
+state
+    a set of TagSnapshots with
+        a commit Commits
+        an article Articles
+        a tag String
+
+actions
+    capture (snapshot: TagSnapshots, commit: Commits, article: Articles, tag: String) : (snapshot: TagSnapshots)
+        record tag association for commit
+        return snapshot
+
+queries
+    _listByCommit (commit: Commits) : (snapshot: TagSnapshots)
+        list snapshots for commit
+    _get (snapshot: TagSnapshots) : (snapshot: TagSnapshots, commit: Commits, article: Articles, tag: String)
+        fetch snapshot
+
+operational principle
+    after capture (snapshot: s1, commit: c1, article: a1, tag: "news") : (snapshot: s1)
+    then _get (snapshot: s1) shows tag "news"
+
+</concept_spec>

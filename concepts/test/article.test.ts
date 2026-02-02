@@ -25,3 +25,31 @@ Deno.test("article operational principle", () => {
     assertEqual(result[0].title, "Hello 2");
     assertEqual(result[0].branch, "b1");
 });
+
+Deno.test("article allows slug reuse after delete", () => {
+    const articles = new ArticleConcept();
+    const created = articles.create({
+        article: "a1",
+        branch: "b1",
+        slug: "hello",
+        title: "Hello",
+        description: "Desc",
+        body: "Body",
+        author: "u1",
+    });
+    assertEqual("article" in created, true);
+    const removed = articles.remove({ article: "a1" });
+    assertEqual("article" in removed, true);
+    const recreated = articles.create({
+        article: "a2",
+        branch: "b1",
+        slug: "hello",
+        title: "Hello again",
+        description: "Desc",
+        body: "Body",
+        author: "u1",
+    });
+    assertEqual("article" in recreated, true);
+    const bySlug = articles._getBySlug({ branch: "b1", slug: "hello" });
+    assertEqual(bySlug[0]?.article, "a2");
+});

@@ -1,5 +1,15 @@
+import { Logging, SyncConcept } from "../../engine/mod.ts";
 import { assert, assertEqual } from "../../engine/test/helpers.ts";
+import { APIConcept } from "../../concepts/API.ts";
+import { ArticleConcept } from "../../concepts/Article.ts";
+import { CommentConcept } from "../../concepts/Comment.ts";
+import { CurrentBranchConcept } from "../../concepts/CurrentBranch.ts";
+import { FavoriteConcept } from "../../concepts/Favorite.ts";
+import { ProfileConcept } from "../../concepts/Profile.ts";
+import { TagConcept } from "../../concepts/Tag.ts";
+import { UserConcept } from "../../concepts/User.ts";
 import { createRealWorldApp } from "../../realworld_app.ts";
+import { makeRealWorldSyncs } from "./index.ts";
 
 const DEFAULT_BRANCH = "branch:main";
 
@@ -197,4 +207,55 @@ Deno.test("realworld syncs: article lifecycle", async () => {
     assertEqual(remainingFavorites.length, 0);
     const remainingComments = Comment._getByTarget({ target: articleId! });
     assertEqual(remainingComments.length, 0);
+});
+
+Deno.test("realworld syncs: missing current branch returns error", async () => {
+    const sync = new SyncConcept();
+    sync.logging = Logging.OFF;
+    const concepts = {
+        API: new APIConcept(),
+        CurrentBranch: new CurrentBranchConcept(),
+        Article: new ArticleConcept(),
+        Comment: new CommentConcept(),
+        Tag: new TagConcept(),
+        Favorite: new FavoriteConcept(),
+        User: new UserConcept(),
+        Profile: new ProfileConcept(),
+    };
+    const {
+        API,
+        CurrentBranch,
+        User,
+        Profile,
+        Article,
+        Comment,
+        Tag,
+        Favorite,
+    } = sync.instrument(concepts);
+
+    sync.register(
+        makeRealWorldSyncs(
+            API,
+            CurrentBranch,
+            User,
+            Profile,
+            Article,
+            Comment,
+            Tag,
+            Favorite,
+        ),
+    );
+
+    await API.request({
+        request: "r-missing-branch",
+        method: "GET",
+        path: "/articles",
+        input: {},
+    });
+
+    const response = API._get({ request: "r-missing-branch" })[0];
+    assert(response);
+    assertEqual(response.code, 409);
+    const responseOut = response.output as { errors: { body: string[] } };
+    assertEqual(responseOut.errors.body[0], "current branch not set");
 });

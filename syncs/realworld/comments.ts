@@ -9,6 +9,11 @@ import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { CommentConcept } from "../../concepts/Comment.ts";
 
 const CURRENT_BRANCH_ID = "current:default";
+const COMMENT_BRANCH_ENDPOINTS = new Set([
+    "POST /articles/:slug/comments",
+    "GET /articles/:slug/comments",
+    "DELETE /articles/:slug/comments/:id",
+]);
 
 function resolveUserId(User: UserConcept, username: string | undefined) {
     if (!username) return undefined;
@@ -157,6 +162,30 @@ export function makeCommentSyncs(
                 },
             })),
         then: actions([API.format, { type: "comment", payload }]),
+    });
+
+    const CommentCurrentBranchMissing = ({ request, method, path, output, code }: Vars) => ({
+        when: actions([API.request, { method, path }, { request }]),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const methodValue = frame[method];
+                const pathValue = frame[path];
+                if (typeof methodValue !== "string" || typeof pathValue !== "string") {
+                    return [];
+                }
+                if (!COMMENT_BRANCH_ENDPOINTS.has(`${methodValue} ${pathValue}`)) {
+                    return [];
+                }
+                const branchId =
+                    CurrentBranch._get({ current: CURRENT_BRANCH_ID })[0]?.branch;
+                if (branchId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("current branch not set"),
+                    [code]: 409,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
     });
 
     const ListComments = ({ request, input, payload, branch }: Vars) => ({
@@ -442,6 +471,7 @@ export function makeCommentSyncs(
     });
 
     return {
+        CommentCurrentBranchMissing,
         CreateComment,
         CreateCommentError,
         CreateCommentFormat,

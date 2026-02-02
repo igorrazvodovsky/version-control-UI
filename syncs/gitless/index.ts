@@ -4,6 +4,8 @@ import type { BranchConcept } from "../../concepts/Branch.ts";
 import type { CommitConcept } from "../../concepts/Commit.ts";
 import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { ArticleSnapshotConcept } from "../../concepts/ArticleSnapshot.ts";
+import type { TagConcept } from "../../concepts/Tag.ts";
+import type { TagSnapshotConcept } from "../../concepts/TagSnapshot.ts";
 import { makeGitlessArticleSyncs } from "./articles.ts";
 
 export function makeGitlessSyncs(
@@ -13,6 +15,8 @@ export function makeGitlessSyncs(
     Commit: CommitConcept,
     Article: ArticleConcept,
     ArticleSnapshot: ArticleSnapshotConcept,
+    Tag: TagConcept,
+    TagSnapshot: TagSnapshotConcept,
 ) {
     return {
         ...makeGitlessArticleSyncs(
@@ -22,6 +26,8 @@ export function makeGitlessSyncs(
             Commit,
             Article,
             ArticleSnapshot,
+            Tag,
+            TagSnapshot,
         ),
     } as const;
 }

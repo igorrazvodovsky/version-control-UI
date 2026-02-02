@@ -241,7 +241,15 @@ export function buildCommentsPayload(
     return { comments };
 }
 
-export function buildTagsPayload(Tag: TagConcept) {
+export function buildTagsPayload(Tag: TagConcept, articleIds?: string[]) {
+    if (articleIds) {
+        const tags = uniqueStrings(
+            articleIds.flatMap((articleId) =>
+                Tag._getByTarget({ target: articleId }).map((row) => row.tag)
+            ),
+        );
+        return { tags };
+    }
     const tags = uniqueStrings(Tag._getAll({}).map((row) => row.tag));
     return { tags };
 }

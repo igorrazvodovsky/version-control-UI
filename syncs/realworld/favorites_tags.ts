@@ -9,6 +9,11 @@ import type { FavoriteConcept } from "../../concepts/Favorite.ts";
 import type { TagConcept } from "../../concepts/Tag.ts";
 
 const CURRENT_BRANCH_ID = "current:default";
+const FAVORITE_TAG_BRANCH_ENDPOINTS = new Set([
+    "POST /articles/:slug/favorite",
+    "DELETE /articles/:slug/favorite",
+    "GET /tags",
+]);
 
 function resolveUserId(User: UserConcept, username: string | undefined) {
     if (!username) return undefined;
@@ -296,16 +301,27 @@ export function makeFavoriteTagSyncs(
         then: actions([API.response, { request, output, code }]),
     });
 
-    const ListTags = ({ request, payload }: Vars) => ({
+    const ListTags = ({ request, payload, branch }: Vars) => ({
         when: actions([API.request, { method: "GET", path: "/tags" }, { request }]),
         where: (frames: Frames) =>
-            frames.map((frame) => ({
-                ...frame,
-                [payload]: {
-                    request: frame[request],
-                    code: 200,
-                },
-            })),
+            bindCurrentBranch(frames, CurrentBranch, branch).flatMap((frame) => {
+                const branchId = frame[branch];
+                if (typeof branchId !== "string") return [];
+                const articleIds = Article._listByBranch({ branch: branchId })
+                    .map((row) => row.article)
+                    .filter((articleId) => {
+                        const articleRow = Article._get({ article: articleId })[0];
+                        return articleRow ? !articleRow.deleted : false;
+                    });
+                return [{
+                    ...frame,
+                    [payload]: {
+                        request: frame[request],
+                        articleIds,
+                        code: 200,
+                    },
+                }];
+            }),
         then: actions([API.format, { type: "tags", payload }]),
     });
 
@@ -319,7 +335,10 @@ export function makeFavoriteTagSyncs(
                     ? payloadValue.code
                     : 200;
                 if (typeof requestId !== "string") return [];
-                const { tags } = buildTagsPayload(Tag);
+                const articleIds = Array.isArray(payloadValue.articleIds)
+                    ? payloadValue.articleIds.filter((id) => typeof id === "string")
+                    : undefined;
+                const { tags } = buildTagsPayload(Tag, articleIds);
                 return [{
                     ...frame,
                     [request]: requestId,
@@ -330,7 +349,32 @@ export function makeFavoriteTagSyncs(
         then: actions([API.response, { request, output, code }]),
     });
 
+    const TagCurrentBranchMissing = ({ request, method, path, output, code }: Vars) => ({
+        when: actions([API.request, { method, path }, { request }]),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const methodValue = frame[method];
+                const pathValue = frame[path];
+                if (typeof methodValue !== "string" || typeof pathValue !== "string") {
+                    return [];
+                }
+                if (!FAVORITE_TAG_BRANCH_ENDPOINTS.has(`${methodValue} ${pathValue}`)) {
+                    return [];
+                }
+                const branchId =
+                    CurrentBranch._get({ current: CURRENT_BRANCH_ID })[0]?.branch;
+                if (branchId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("current branch not set"),
+                    [code]: 409,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
     return {
+        TagCurrentBranchMissing,
         FavoriteArticleError,
         FavoriteArticle,
         FavoriteArticleFormat,

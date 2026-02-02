@@ -19,6 +19,9 @@ This design must scale beyond Articles. The core Gitless concepts (CurrentBranch
 - [x] (2026-02-01T18:51Z) Updated RealWorld syncs/tests to resolve current branch and use branch-scoped Article queries.
 - [x] (2026-02-01T18:51Z) Validated with Deno tests: `deno test concepts/test`, `deno test syncs/gitless`, and `deno test syncs/realworld/realworld.test.ts`.
 - [x] (2026-02-01T18:51Z) Wired `/gitless/init` into app startup via `realworld_app.ts` and updated RealWorld tests to use it.
+- [x] (2026-02-02T19:20Z) Enabled slug reuse after delete in `Article` and added an operational-principle test.
+- [x] (2026-02-02T19:20Z) Added TagSnapshot + tag cloning on branch creation and commit capture for tags.
+- [x] (2026-02-02T19:20Z) Added current-branch-missing errors for branch-scoped RealWorld endpoints and a regression test.
 
 ## Surprises & Discoveries
 
@@ -47,10 +50,19 @@ This design must scale beyond Articles. The core Gitless concepts (CurrentBranch
 - Decision: Centralize startup wiring in `realworld_app.ts` and call `/gitless/init` once during setup.
   Rationale: Ensures the current branch is always set before API usage without duplicating init logic across tests or future app entrypoints.
   Date/Author: 2026-02-01 / assistant
+- Decision: Release slugs on article delete so a slug can be reused within a branch.
+  Rationale: Matches expected delete/recreate semantics and avoids permanent slug tombstones.
+  Date/Author: 2026-02-02 / assistant
+- Decision: Treat tags as part of the initial Article versioning scope via tag cloning and commit-time tag snapshots.
+  Rationale: Tags are part of article working-copy state and must survive branch creation and commit capture.
+  Date/Author: 2026-02-02 / assistant
+- Decision: Return a 409 error when branch-scoped RealWorld endpoints are called before `CurrentBranch` is set.
+  Rationale: Prevents silent drops when the current branch is missing while keeping user/profile endpoints unaffected.
+  Date/Author: 2026-02-02 / assistant
 
 ## Outcomes & Retrospective
 
-Core Gitless concepts and synchronizations are implemented for Articles with a single local repo model. Branches are independent working copies, commits advance per-branch heads, and tracked articles are snapshot on commit. RealWorld syncs now resolve the current branch, and all associated tests pass. Remaining work is optional: expose additional Gitless endpoints (status/log) or expand version control to other object types using snapshot concepts.
+Core Gitless concepts and synchronizations are implemented for Articles with a single local repo model. Branches are independent working copies, commits advance per-branch heads, and tracked articles are snapshot on commit alongside tag snapshots. Article slugs are reusable after delete, and RealWorld endpoints now return explicit errors when the current branch is missing. All associated tests pass. Remaining work is optional: expose additional Gitless endpoints (status/log) or expand version control to other object types using snapshot concepts.
 
 ## Context and Orientation
 
@@ -88,11 +100,13 @@ Add the Gitless concept specs and implementations:
     specs/Branch.concept
     specs/Commit.concept
     specs/ArticleSnapshot.concept
+    specs/TagSnapshot.concept
 
     concepts/CurrentBranch.ts
     concepts/Branch.ts
     concepts/Commit.ts
     concepts/ArticleSnapshot.ts
+    concepts/TagSnapshot.ts
 
 Add concept tests:
 
@@ -100,6 +114,7 @@ Add concept tests:
     concepts/test/branch.test.ts
     concepts/test/commit.test.ts
     concepts/test/article_snapshot.test.ts
+    concepts/test/tag_snapshot.test.ts
 
 Add Gitless syncs and tests:
 
@@ -129,7 +144,7 @@ The change is accepted when:
 
 1. `Article` is branch-scoped and has Gitless classifications (tracked/untracked/ignored/conflict) plus a deletion flag, and its operational principle test passes.
 2. Gitless core concepts (CurrentBranch, Branch, Commit, ArticleSnapshot) exist, have implementations, and pass their operational principle tests.
-3. A Gitless flow test shows that edits on two branches do not overwrite one another, switching branches never requires stashing, and commits advance per-branch heads only.
+3. A Gitless flow test shows that edits on two branches do not overwrite one another, switching branches never requires stashing, commits advance per-branch heads only, and tag snapshots are recorded for tracked articles.
 4. RealWorld syncs still pass tests while using the branch-scoped Article concept and current-branch resolution.
 
 ## Idempotence and Recovery
@@ -219,6 +234,17 @@ Queries:
     _listByCommit (commit: Commits) : (snapshot: ArticleSnapshots)
     _get (snapshot: ArticleSnapshots) : (snapshot: ArticleSnapshots, commit: Commits, article: Articles, slug: String, title: String, description: String, body: String, author: Users, deleted: Flag)
 
+### TagSnapshot
+
+Create `specs/TagSnapshot.concept` to store tag associations per commit. Actions:
+
+    capture (snapshot: TagSnapshots, commit: Commits, article: Articles, tag: String) : (snapshot: TagSnapshots)
+
+Queries:
+
+    _listByCommit (commit: Commits) : (snapshot: TagSnapshots)
+    _get (snapshot: TagSnapshots) : (snapshot: TagSnapshots, commit: Commits, article: Articles, tag: String)
+
 ### Gitless Synchronizations (new)
 
 In `syncs/gitless/`, implement:
@@ -226,10 +252,12 @@ In `syncs/gitless/`, implement:
 - A sync that ensures the default branch (`main`) exists and initializes `CurrentBranch` on first use.
 - This is implemented as a `POST /gitless/init` endpoint so tests and callers can explicitly initialize before other requests.
 - A sync that resolves the current branch via `CurrentBranch._get`.
-- A commit flow: when `API.request` indicates a commit, query the current branch head, verify no tracked articles are in conflict, create a commit, update branch head, and capture snapshots for all tracked working articles on that branch.
+- A branch creation flow that clones article working copies and their tags into the new branch.
+- A commit flow: when `API.request` indicates a commit, query the current branch head, verify no tracked articles are in conflict, create a commit, update branch head, and capture snapshots for all tracked working articles and their tags on that branch.
 
 ### RealWorld Synchronizations (update)
 
-Update `syncs/realworld/articles.ts`, `comments.ts`, `favorites_tags.ts`, `cascades.ts`, and `realworld.test.ts` to resolve the current branch via `CurrentBranch._get({ current: "current:default" })` and pass `branch` into all Article actions/queries. Slug lookups and uniqueness checks should be scoped to the current branch.
+Update `syncs/realworld/articles.ts`, `comments.ts`, `favorites_tags.ts`, `cascades.ts`, and `realworld.test.ts` to resolve the current branch via `CurrentBranch._get({ current: "current:default" })` and pass `branch` into all Article actions/queries. Slug lookups and uniqueness checks should be scoped to the current branch, and tags should list only tags on the current branch. Add explicit 409 errors when branch-scoped endpoints are called before the current branch is set.
 
 Plan Change Note: 2026-02-01 updated the ExecPlan to explicitly remove any remote/local distinction and keep all operations local in a single-repo model.
+Plan Change Note: 2026-02-02 updated the ExecPlan to include tag snapshots/cloning, branch-scoped tag listing, slug reuse after delete, and explicit missing-branch errors to match updated requirements.
