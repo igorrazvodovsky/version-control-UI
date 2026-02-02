@@ -1,4 +1,5 @@
-import { serve } from "https://deno.land/std/http/server.ts";
+import { Application, Router } from "jsr:@oak/oak";
+import { z } from "npm:zod";
 import { createRealWorldApp } from "./realworld_app.ts";
 
 const appPromise = createRealWorldApp();
@@ -6,58 +7,172 @@ const appPromise = createRealWorldApp();
 type RouteDef = {
     method: string;
     template: string;
-    pattern: RegExp;
-    params: string[];
     paramMap?: Record<string, string>;
+    inputSchema?: z.ZodType<Record<string, unknown>>;
 };
 
-function compileRoute(template: string): { pattern: RegExp; params: string[] } {
-    const params: string[] = [];
-    const parts = template.split("/").filter(Boolean).map((part) => {
-        if (part.startsWith(":")) {
-            params.push(part.slice(1));
-            return "([^/]+)";
-        }
-        return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    });
-    const pattern = new RegExp(`^/${parts.join("/")}$`);
-    return { pattern, params };
-}
-
-function buildRoute(
-    method: string,
-    template: string,
-    paramMap?: Record<string, string>,
-): RouteDef {
-    const { pattern, params } = compileRoute(template);
-    return { method, template, pattern, params, paramMap };
-}
-
 const routes: RouteDef[] = [
-    buildRoute("POST", "/users"),
-    buildRoute("GET", "/profiles"),
-    buildRoute("GET", "/user"),
-    buildRoute("PUT", "/user"),
-    buildRoute("PUT", "/profiles"),
-    buildRoute("POST", "/articles"),
-    buildRoute("GET", "/articles"),
-    buildRoute("GET", "/articles/:slug"),
-    buildRoute("PUT", "/articles/:slug"),
-    buildRoute("DELETE", "/articles/:slug"),
-    buildRoute("POST", "/articles/:slug/comments"),
-    buildRoute("GET", "/articles/:slug/comments"),
-    buildRoute(
-        "DELETE",
-        "/articles/:slug/comments/:id",
-        { id: "commentId" },
-    ),
-    buildRoute("POST", "/articles/:slug/favorite"),
-    buildRoute("DELETE", "/articles/:slug/favorite"),
-    buildRoute("GET", "/tags"),
-    buildRoute("POST", "/gitless/init"),
-    buildRoute("POST", "/gitless/branches"),
-    buildRoute("PUT", "/gitless/branches/current"),
-    buildRoute("POST", "/gitless/commits"),
+    {
+        method: "POST",
+        template: "/users",
+        inputSchema: z.object({
+            username: z.string().trim().min(1),
+            email: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "GET",
+        template: "/profiles",
+        inputSchema: z.object({
+            username: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "GET",
+        template: "/user",
+        inputSchema: z.object({
+            username: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "PUT",
+        template: "/user",
+        inputSchema: z.object({
+            username: z.string().trim().min(1),
+            newUsername: z.string().optional(),
+            email: z.string().optional(),
+        }).passthrough().refine((value) => {
+            const hasName = value.newUsername !== undefined;
+            const hasEmail = value.email !== undefined;
+            return (hasName && !hasEmail) || (!hasName && hasEmail);
+        }, { message: "provide exactly one field" }),
+    },
+    {
+        method: "PUT",
+        template: "/profiles",
+        inputSchema: z.object({
+            username: z.string().trim().min(1),
+            bio: z.string().optional(),
+            image: z.string().optional(),
+        }).passthrough().refine((value) => {
+            const hasBio = value.bio !== undefined;
+            const hasImage = value.image !== undefined;
+            return (hasBio && !hasImage) || (!hasBio && hasImage);
+        }, { message: "provide only one field" }),
+    },
+    {
+        method: "POST",
+        template: "/articles",
+        inputSchema: z.object({
+            author: z.string().trim().min(1),
+            title: z.string().trim().min(1),
+            description: z.string().trim().min(1),
+            body: z.string().trim().min(1),
+            tagList: z.array(z.string()).optional(),
+        }).passthrough(),
+    },
+    {
+        method: "GET",
+        template: "/articles",
+        inputSchema: z.object({
+            author: z.string().optional(),
+            favoritedBy: z.string().optional(),
+            tag: z.string().optional(),
+            viewer: z.string().optional(),
+        }).passthrough(),
+    },
+    {
+        method: "GET",
+        template: "/articles/:slug",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            viewer: z.string().optional(),
+        }).passthrough(),
+    },
+    {
+        method: "PUT",
+        template: "/articles/:slug",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            author: z.string().trim().min(1),
+            title: z.string().trim().min(1),
+            description: z.string().trim().min(1),
+            body: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "DELETE",
+        template: "/articles/:slug",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            author: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "POST",
+        template: "/articles/:slug/comments",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            author: z.string().trim().min(1),
+            body: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "GET",
+        template: "/articles/:slug/comments",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "DELETE",
+        template: "/articles/:slug/comments/:id",
+        paramMap: { id: "commentId" },
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            commentId: z.string().trim().min(1),
+            author: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "POST",
+        template: "/articles/:slug/favorite",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            user: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "DELETE",
+        template: "/articles/:slug/favorite",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            user: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    { method: "GET", template: "/tags" },
+    { method: "POST", template: "/gitless/init" },
+    {
+        method: "POST",
+        template: "/gitless/branches",
+        inputSchema: z.object({
+            name: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "PUT",
+        template: "/gitless/branches/current",
+        inputSchema: z.object({
+            name: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "POST",
+        template: "/gitless/commits",
+        inputSchema: z.object({
+            message: z.string().trim().min(1),
+        }).passthrough(),
+    },
 ];
 
 const corsHeaders = {
@@ -66,106 +181,248 @@ const corsHeaders = {
     "Access-Control-Allow-Headers": "Content-Type",
 };
 
-function jsonResponse(status: number, body: unknown) {
-    return new Response(JSON.stringify(body), {
-        status,
-        headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            ...corsHeaders,
-        },
-    });
-}
+const InputRecordSchema = z.record(z.string(), z.unknown());
 
-function errorResponse(status: number, message: string) {
-    return jsonResponse(status, { error: message });
-}
+class ValidationError extends Error {
+    status: number;
 
-function matchRoute(method: string, path: string) {
-    for (const route of routes) {
-        if (route.method !== method) continue;
-        const match = route.pattern.exec(path);
-        if (!match) continue;
-        const params: Record<string, string> = {};
-        route.params.forEach((param, idx) => {
-            const name = route.paramMap?.[param] ?? param;
-            params[name] = match[idx + 1];
-        });
-        return { route, params };
+    constructor(message: string, status = 422) {
+        super(message);
+        this.status = status;
     }
-    return null;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
+function applyCorsHeaders(headers: Headers) {
+    for (const [key, value] of Object.entries(corsHeaders)) {
+        headers.set(key, value);
+    }
+}
+
+function parseRecord(value: unknown, message: string): Record<string, unknown> {
+    const result = InputRecordSchema.safeParse(value);
+    if (!result.success) {
+        throw new Error(message);
+    }
+    return result.data;
+}
+
+function formatZodError(error: z.ZodError) {
+    const issues = "issues" in error && Array.isArray(error.issues)
+        ? error.issues
+        : (error as unknown as { errors?: { message: string; path?: string[] }[] })
+            .errors ?? [];
+    if (issues.length === 0) return "invalid input";
+    const issue = issues[0];
+    const path = Array.isArray(issue.path) && issue.path.length > 0
+        ? issue.path.join(".")
+        : "input";
+    return `${path} ${issue.message}`.trim();
+}
+
+function validateInput(route: RouteDef, input: Record<string, unknown>) {
+    if (!route.inputSchema) return input;
+    const result = route.inputSchema.safeParse(input);
+    if (!result.success) {
+        throw new ValidationError(formatZodError(result.error));
+    }
+    return result.data;
+}
+
+async function readJsonBody(
+    ctx: { request: { hasBody: boolean; body?: any } },
+) {
+    if (!ctx.request.hasBody) return {};
+    const body = ctx.request.body;
+    if (!body) return {};
+    let parsed: unknown;
+
+    try {
+        const bodyType = typeof body.type === "string" ? body.type : undefined;
+
+        if (bodyType === "json" && typeof body.json === "function") {
+            parsed = await body.json();
+        } else if (bodyType === "text" && typeof body.text === "function") {
+            const text = await body.text();
+            if (!text.trim()) return {};
+            parsed = JSON.parse(text);
+        } else if (typeof body.json === "function") {
+            parsed = await body.json();
+        } else {
+            throw new Error("Body must be a JSON object");
+        }
+    } catch (error) {
+        throw new Error(errorMessage(error, "Invalid JSON"));
+    }
+
+    if (parsed === undefined || parsed === null || parsed === "") {
+        return {};
+    }
+
+    return parseRecord(parsed, "Body must be a JSON object");
 }
 
 function queryToInput(searchParams: URLSearchParams) {
+    return Object.fromEntries(searchParams.entries());
+}
+
+function paramsToInput(
+    params: Record<string, string>,
+    paramMap?: Record<string, string>,
+) {
     const input: Record<string, string> = {};
-    for (const [key, value] of searchParams.entries()) {
-        input[key] = value;
+    for (const [key, value] of Object.entries(params)) {
+        const name = paramMap?.[key] ?? key;
+        input[name] = value;
     }
     return input;
 }
 
-async function readJsonBody(request: Request): Promise<Record<string, unknown>> {
-    const text = await request.text();
-    if (!text.trim()) return {};
-    try {
-        const parsed = JSON.parse(text) as unknown;
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-            throw new Error("Body must be a JSON object");
-        }
-        return parsed as Record<string, unknown>;
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Invalid JSON";
-        throw new Error(message);
-    }
-}
-
-export async function handleRequest(request: Request): Promise<Response> {
-    if (request.method.toUpperCase() === "OPTIONS") {
-        return new Response(null, { status: 204, headers: corsHeaders });
-    }
-
-    const url = new URL(request.url);
-    const method = request.method.toUpperCase();
-    const matched = matchRoute(method, url.pathname);
-    if (!matched) {
-        return errorResponse(404, "route not found");
-    }
-
-    const queryInput = queryToInput(url.searchParams);
-    let bodyInput: Record<string, unknown> = {};
-    if (method !== "GET") {
-        try {
-            bodyInput = await readJsonBody(request);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Invalid JSON";
-            return errorResponse(400, message);
-        }
-    }
-
+async function buildInput(
+    ctx: {
+        request: { method: string; url: URL; hasBody: boolean; body?: unknown };
+        params: Record<string, string>;
+    },
+    route: RouteDef,
+) {
+    const queryInput = queryToInput(ctx.request.url.searchParams);
+    const bodyInput = ctx.request.method === "GET" ? {} : await readJsonBody(ctx);
+    const paramsInput = paramsToInput(ctx.params, route.paramMap);
     const input = {
         ...queryInput,
         ...bodyInput,
-        ...matched.params,
+        ...paramsInput,
     } as Record<string, unknown>;
+    return validateInput(route, input);
+}
 
+async function handleRoute(
+    ctx: {
+        request: { method: string; url: URL; hasBody: boolean; body?: unknown };
+        params: Record<string, string>;
+        response: { status: number; body: unknown; type?: string };
+    },
+    route: RouteDef,
+) {
+    const input = await buildInput(ctx, route);
     const { API } = await appPromise;
     const requestId = crypto.randomUUID();
     await API.request({
         request: requestId,
-        method,
-        path: matched.route.template,
+        method: ctx.request.method.toUpperCase(),
+        path: route.template,
         input,
     });
 
     const stored = API._get({ request: requestId })[0];
     if (!stored || (stored.code === 0 && stored.output === null)) {
-        return errorResponse(500, `no response for request ${requestId}`);
+        ctx.response.status = 500;
+        ctx.response.type = "json";
+        ctx.response.body = { error: `no response for request ${requestId}` };
+        return;
     }
 
-    return jsonResponse(stored.code || 200, stored.output ?? {});
+    ctx.response.status = stored.code || 200;
+    ctx.response.type = "json";
+    ctx.response.body = stored.output ?? {};
+}
+
+function registerRoute(router: Router, route: RouteDef) {
+    const handler = async (ctx: any) => {
+        try {
+            await handleRoute(ctx, route);
+        } catch (error) {
+            const status = error instanceof ValidationError
+                ? error.status
+                : 400;
+            ctx.response.status = status;
+            ctx.response.type = "json";
+            ctx.response.body = { error: errorMessage(error, "Invalid request") };
+        }
+    };
+
+    switch (route.method) {
+        case "GET":
+            router.get(route.template, handler);
+            break;
+        case "POST":
+            router.post(route.template, handler);
+            break;
+        case "PUT":
+            router.put(route.template, handler);
+            break;
+        case "DELETE":
+            router.delete(route.template, handler);
+            break;
+        default:
+            router.all(route.template, handler);
+    }
+}
+
+function createApp() {
+    const app = new Application();
+    const router = new Router();
+
+    for (const route of routes) {
+        registerRoute(router, route);
+    }
+
+    app.use(async (ctx, next) => {
+        if (ctx.request.method.toUpperCase() === "OPTIONS") {
+            applyCorsHeaders(ctx.response.headers);
+            ctx.response.status = 204;
+            return;
+        }
+
+        await next();
+        applyCorsHeaders(ctx.response.headers);
+    });
+
+    app.use(router.routes());
+    app.use(router.allowedMethods());
+    app.use((ctx) => {
+        const isNotFound = ctx.response.status === 404 ||
+            (ctx.response.status === 200 && ctx.response.body == null);
+        if (isNotFound) {
+            ctx.response.status = 404;
+            ctx.response.type = "json";
+            ctx.response.body = { error: "route not found" };
+        }
+    });
+
+    return app;
+}
+
+const app = createApp();
+
+export async function handleRequest(request: Request): Promise<Response> {
+    const handler = (app as unknown as {
+        handle?: (request: Request) => Promise<Response | undefined>;
+        fetch?: (request: Request) => Promise<Response>;
+    });
+    const response = handler.handle
+        ? await handler.handle(request)
+        : handler.fetch
+        ? await handler.fetch(request)
+        : undefined;
+    if (!response) {
+        const headers = new Headers({
+            "Content-Type": "application/json; charset=utf-8",
+        });
+        applyCorsHeaders(headers);
+        return new Response(JSON.stringify({ error: "route not found" }), {
+            status: 404,
+            headers,
+        });
+    }
+    return response;
 }
 
 if (import.meta.main) {
     const port = Number(Deno.env.get("PORT") ?? "8080");
-    serve(handleRequest, { port });
+    app.listen({ port });
     console.log(`HTTP adapter listening on http://localhost:${port}`);
 }

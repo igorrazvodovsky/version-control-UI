@@ -1,10 +1,18 @@
+import { z } from "npm:zod";
+
 export type InputRecord = Record<string, unknown>;
 
+const InputRecordSchema = z.record(z.string(), z.unknown());
+const NonEmptyStringSchema = z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length > 0);
+const OptionalStringSchema = z.string();
+const StringArraySchema = z.array(z.string());
+
 export function asRecord(value: unknown): InputRecord {
-    if (value && typeof value === "object") {
-        return value as InputRecord;
-    }
-    return {};
+    const result = InputRecordSchema.safeParse(value);
+    return result.success ? result.data : {};
 }
 
 export function hasKey(input: InputRecord, key: string): boolean {
@@ -12,29 +20,25 @@ export function hasKey(input: InputRecord, key: string): boolean {
 }
 
 export function getString(input: InputRecord, key: string): string | undefined {
-    const value = input[key];
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
+    const result = NonEmptyStringSchema.safeParse(input[key]);
+    return result.success ? result.data : undefined;
 }
 
 export function getOptionalString(
     input: InputRecord,
     key: string,
 ): string | undefined {
-    const value = input[key];
-    if (typeof value !== "string") return undefined;
-    return value;
+    const result = OptionalStringSchema.safeParse(input[key]);
+    return result.success ? result.data : undefined;
 }
 
 export function getStringArray(
     input: InputRecord,
     key: string,
 ): string[] | undefined {
-    const value = input[key];
-    if (!Array.isArray(value)) return undefined;
-    return value
-        .filter((item) => typeof item === "string")
+    const result = StringArraySchema.safeParse(input[key]);
+    if (!result.success) return undefined;
+    return result.data
         .map((item) => item.trim())
         .filter((item) => item.length > 0);
 }
@@ -65,5 +69,5 @@ export function makeSlug(
 }
 
 export function isStringArray(value: unknown): value is string[] {
-    return Array.isArray(value) && value.every((item) => typeof item === "string");
+    return StringArraySchema.safeParse(value).success;
 }

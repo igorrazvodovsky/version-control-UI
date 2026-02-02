@@ -20,6 +20,7 @@ export type Article = {
 
 export type ArticlesResponse = {
   articles: Article[];
+  articlesCount?: number;
 };
 
 export const DEFAULT_API_BASE_URL = "http://localhost:8080";

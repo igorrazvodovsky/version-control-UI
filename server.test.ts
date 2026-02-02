@@ -39,4 +39,15 @@ Deno.test("http adapter: realworld + gitless", async () => {
     assertEqual(missingRes.status, 404);
     const missingBody = await missingRes.json() as { error?: string };
     assert(missingBody.error);
+
+    const invalidRes = await handleRequest(
+        new Request("http://localhost/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "not-json",
+        }),
+    );
+    assertEqual(invalidRes.status, 400);
+    const invalidBody = await invalidRes.json() as { error?: string };
+    assert(invalidBody.error);
 });
