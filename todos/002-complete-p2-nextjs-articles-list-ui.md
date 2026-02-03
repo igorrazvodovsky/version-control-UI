@@ -2,21 +2,21 @@
 status: complete
 priority: p2
 issue_id: "002"
-tags: [frontend, nextjs, deno, realworld]
+tags: [frontend, nextjs, deno, app]
 dependencies: []
 ---
 
 # Add Next.js articles list UI (Deno)
 
-Build a minimal Next.js frontend under `apps/web/` that lists articles from the existing RealWorld HTTP API.
+Build a minimal Next.js frontend under `apps/web/` that lists articles from the existing HTTP API.
 
 ## Problem Statement
 
-There is no frontend UI to quickly verify or demo the RealWorld articles list endpoint. A lightweight Next.js app will make development and demos faster.
+There is no frontend UI to quickly verify or demo the API articles list endpoint. A lightweight Next.js app will make development and demos faster.
 
 ## Findings
 
-- Backend already exposes `GET /articles` via `server.ts` and RealWorld syncs.
+- Backend already exposes `GET /articles` via `server.ts` and API syncs.
 - CORS headers are enabled for browser fetches in `server.ts`.
 - The plan specifies App Router defaults and the app location `apps/web/`.
 
@@ -68,7 +68,7 @@ Proceed with Option 1 (Deno + create-next-app). Implement `/` articles list UI w
 
 **Related components:**
 - `server.ts` (HTTP adapter, CORS headers)
-- `syncs/realworld/articles.ts` (list articles sync)
+- `syncs/app/articles.ts` (list articles sync)
 
 **Database changes:**
 - None

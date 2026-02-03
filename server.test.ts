@@ -1,7 +1,7 @@
 import { assert, assertEqual } from "./engine/test/helpers.ts";
 import { handleRequest } from "./server.ts";
 
-Deno.test("http adapter: realworld + gitless", async () => {
+Deno.test("http adapter: app + version control", async () => {
     const username = `user-${crypto.randomUUID().slice(0, 8)}`;
     const regRes = await handleRequest(
         new Request("http://localhost/users", {
@@ -23,7 +23,7 @@ Deno.test("http adapter: realworld + gitless", async () => {
     assertEqual(regBody.user.username, username);
 
     const initRes = await handleRequest(
-        new Request("http://localhost/gitless/init", { method: "POST" }),
+        new Request("http://localhost/version-control/init", { method: "POST" }),
     );
     assertEqual(initRes.status, 200);
     const initBody = await initRes.json() as {

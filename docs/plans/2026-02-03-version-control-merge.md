@@ -1,32 +1,32 @@
-# Gitless Merge Support
+# Version Control Merge Support
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Maintain this plan in accordance with `.agent/PLANS.md` at the repository root. This plan extends `docs/plans/2026-02-01-gitless.md` and assumes the concepts and syncs described there already exist.
+Maintain this plan in accordance with `.agent/PLANS.md` at the repository root. This plan extends `docs/plans/2026-02-01-version-control.md` and assumes the concepts and syncs described there already exist.
 
 ## Purpose / Big Picture
 
-After this change, a developer can merge another branch into the current branch using Gitless semantics with the simplifying assumption that all merges are clean. Each branch keeps its own working copies, a successful merge produces a merge commit with two parents, and conflict handling is deferred to a future iteration. The behavior is visible by running Gitless merge tests that create two branches, diverge their tracked articles in non-conflicting ways, and merge to yield a merge commit. Merge-in-progress state is documented and modeled for future implementation but is not activated by this first pass.
+After this change, a developer can merge another branch into the current branch using version control semantics with the simplifying assumption that all merges are clean. Each branch keeps its own working copies, a successful merge produces a merge commit with two parents, and conflict handling is deferred to a future iteration. The behavior is visible by running version control merge tests that create two branches, diverge their tracked articles in non-conflicting ways, and merge to yield a merge commit. Merge-in-progress state is documented and modeled for future implementation but is not activated by this first pass.
 
 ## Progress
 
-- [x] (2026-02-03T19:40Z) Reviewed `docs/resources/gitless.md`, current Gitless syncs, and `docs/plans/2026-02-01-gitless.md` to align merge semantics.
+- [x] (2026-02-03T19:40Z) Reviewed `docs/resources/version-control.md`, current version control syncs, and `docs/plans/2026-02-01-version-control.md` to align merge semantics.
 - [x] (2026-02-03T21:10Z) Implemented clean-merge syncs, commit parent changes, branch head cloning on create, and merge tests.
-- [x] (2026-02-03T21:15Z) Validated with `deno test concepts/test` and `deno test syncs/gitless`.
+- [x] (2026-02-03T21:15Z) Validated with `deno test concepts/test` and `deno test syncs/version_control`.
 
 ## Surprises & Discoveries
 
 - Observation: The current `Commit` concept stores only a single optional parent, so a merge commit cannot be represented without changing the model.
   Evidence: `specs/Commit.concept:11`, `concepts/Commit.ts:6`.
-- Observation: Gitless syncs have no merge endpoints or merge state tracking; conflicts are only represented via `Article.status`.
-  Evidence: `syncs/gitless/articles.ts` and absence of a `Merge` concept.
+- Observation: version control syncs have no merge endpoints or merge state tracking; conflicts are only represented via `Article.status`.
+  Evidence: `syncs/version_control/articles.ts` and absence of a `Merge` concept.
 - Observation: Newly created branches had no head commit, which caused merge-base discovery to fail and clean merges to be flagged as conflicts.
-  Evidence: Clean-merge test failed until branch-head cloning on create was added in `syncs/gitless/articles.ts`.
+  Evidence: Clean-merge test failed until branch-head cloning on create was added in `syncs/version_control/articles.ts`.
 
 ## Decision Log
 
 - Decision: Model merge commits with a `parents` set on `Commit`, replacing the single `parent`.
-  Rationale: Gitless merges create merge commits with multiple parents; representing this directly avoids parallel concepts and keeps history explicit.
+  Rationale: version control merges create merge commits with multiple parents; representing this directly avoids parallel concepts and keeps history explicit.
   Date/Author: 2026-02-03 / assistant
 - Decision: Defer merge-in-progress state and conflict resolution, documenting the intended Merge concept shape for a future iteration.
   Rationale: The current scope assumes clean merges only; persistent merge state is needed later for conflict workflows and branch switching mid-merge.
@@ -43,27 +43,27 @@ After this change, a developer can merge another branch into the current branch 
 
 ## Outcomes & Retrospective
 
-Clean merge support is implemented for Gitless. Commits now store parent sets, branch creation clones the current head, and merge endpoints apply three-way merges without conflict resolution. Gitless tests cover clean merges and conflict detection, and concept/sync tests pass. Remaining work is to implement merge-in-progress and conflict resolution per the deferred Merge concept.
+Clean merge support is implemented for version control. Commits now store parent sets, branch creation clones the current head, and merge endpoints apply three-way merges without conflict resolution. version control tests cover clean merges and conflict detection, and concept/sync tests pass. Remaining work is to implement merge-in-progress and conflict resolution per the deferred Merge concept.
 
 ## Context and Orientation
 
 This repository uses concept design. Concepts are specified in `specs/*.concept` and implemented as TypeScript classes in `concepts/*.ts`. Actions accept one input object and return one output object. Query methods are prefixed with `_` and return arrays. Concepts cannot import one another. Synchronizations live in `syncs/` and compose actions with `when/where/then` using the engine in `engine/mod.ts`.
 
-Gitless behavior is currently defined by `docs/plans/2026-02-01-gitless.md` and implemented in `syncs/gitless/articles.ts`, with core concepts `Branch`, `CurrentBranch`, `Commit`, `ArticleSnapshot`, and `TagSnapshot`. There is no merge support yet.
+version control behavior is currently defined by `docs/plans/2026-02-01-version-control.md` and implemented in `syncs/version_control/articles.ts`, with core concepts `Branch`, `CurrentBranch`, `Commit`, `ArticleSnapshot`, and `TagSnapshot`. There is no merge support yet.
 
 Key terms used in this plan are defined as follows. A “merge” combines changes from a source branch into the current branch. A “merge commit” is a commit with two parents: the current branch head and the source branch head. A “merge base” is the closest common ancestor commit of the two heads and is used for three-way merge comparison. A “working copy” is the current Article state for a branch. A “conflict” is an Article with status CONFLICT, which will be used in a future iteration when merge-in-progress is implemented. “Merge state” is a persistent record (stored by the future Merge concept) that a merge is in progress for a branch and what the second parent should be.
 
-Gitless alignment from `docs/resources/gitless.md` that this plan enforces: there is no staging area; branch working copies and classifications are per-branch; there is always a current branch (no detached head). Conflict persistence and merge-in-progress state are explicitly deferred to future work.
+version control alignment from `docs/resources/version-control.md` that this plan enforces: there is no staging area; branch working copies and classifications are per-branch; there is always a current branch (no detached head). Conflict persistence and merge-in-progress state are explicitly deferred to future work.
 
 ## Plan of Work
 
 Milestone 1 updates the Commit model to support merge commits. The Commit concept will store `parents` as a set of commit IDs and return them in `_get`. Tests will be updated to reflect the new Commit shape. The intended Merge concept shape for merge-in-progress is documented but not implemented in this milestone.
 
-Milestone 2 implements clean-merge logic and Gitless API endpoints. A new `/gitless/merges` endpoint will initiate a merge of a named branch into the current branch, compute the merge base from the commit graph, perform a three-way merge by slug against the current working copy, and create a merge commit when no conflicts are detected. If conflicts are detected, the endpoint returns HTTP 409 with a “merge conflicts not supported” error and makes no changes. There is no merge-in-progress state or resolve endpoint in this iteration.
+Milestone 2 implements clean-merge logic and version control API endpoints. A new `/version-control/merges` endpoint will initiate a merge of a named branch into the current branch, compute the merge base from the commit graph, perform a three-way merge by slug against the current working copy, and create a merge commit when no conflicts are detected. If conflicts are detected, the endpoint returns HTTP 409 with a “merge conflicts not supported” error and makes no changes. There is no merge-in-progress state or resolve endpoint in this iteration.
 
-Milestone 3 adds merge tests and updates wiring only as needed. Gitless sync tests will cover clean merges and the conflict-detection error path. If no new concept is introduced, `realworld_app.ts` and `syncs/gitless/index.ts` may not require changes beyond updated Commit usage.
+Milestone 3 adds merge tests and updates wiring only as needed. version control sync tests will cover clean merges and the conflict-detection error path. If no new concept is introduced, `app.ts` and `syncs/version_control/index.ts` may not require changes beyond updated Commit usage.
 
-Each milestone is independently verifiable: Commit concept tests pass (Milestone 1), merge endpoints behave as expected for clean merges and conflict detection (Milestone 2), and Gitless tests pass with the new merge cases (Milestone 3).
+Each milestone is independently verifiable: Commit concept tests pass (Milestone 1), merge endpoints behave as expected for clean merges and conflict detection (Milestone 2), and version control tests pass with the new merge cases (Milestone 3).
 
 ## Concrete Steps
 
@@ -73,20 +73,20 @@ From `/Users/igors.razvodovskis/Development/ticket-less-4-1`, update the Commit 
     concepts/Commit.ts
     concepts/test/commit.test.ts
 
-Update Gitless syncs to include clean-merge flows and merge-aware commits:
+Update version control syncs to include clean-merge flows and merge-aware commits:
 
-    syncs/gitless/articles.ts
-    syncs/gitless/index.ts
-    syncs/gitless/gitless.test.ts
+    syncs/version_control/articles.ts
+    syncs/version_control/index.ts
+    syncs/version_control/version_control.test.ts
 
 Update app wiring only if required by the Commit changes:
 
-    realworld_app.ts
+    app.ts
 
 Run tests:
 
     deno test concepts/test
-    deno test syncs/gitless
+    deno test syncs/version_control
 
 The expected output should report all tests passing.
 
@@ -95,7 +95,7 @@ The expected output should report all tests passing.
 The change is accepted when:
 
 1. `Commit` stores `parents` as a set, and its operational principle test passes with a root commit that has an empty parents list.
-2. A Gitless merge test shows that merging a feature branch with non-conflicting changes creates a merge commit whose parents include both branch heads, and the current branch head advances.
+2. A version control merge test shows that merging a feature branch with non-conflicting changes creates a merge commit whose parents include both branch heads, and the current branch head advances.
 3. If a conflict is detected by the three-way merge logic, the merge endpoint returns HTTP 409 with an explicit “merge conflicts not supported” error and does not modify the working copies.
 
 ## Idempotence and Recovery
@@ -145,11 +145,11 @@ Implementation notes for `concepts/Commit.ts`:
 
 Merge-in-progress state is deferred in this plan. For a future iteration, model it as a `Merge` concept with fields for `branch`, `source`, `targetHead`, `sourceHead`, and `createdAt`, plus actions to start and complete a merge. This plan does not implement the concept or its tests.
 
-### Gitless Merge Synchronizations
+### version control Merge Synchronizations
 
-Add endpoints and merge logic in `syncs/gitless/articles.ts`.
+Add endpoints and merge logic in `syncs/version_control/articles.ts`.
 
-Endpoint: `POST /gitless/merges` with input `{ name: String, message?: String }`.
+Endpoint: `POST /version-control/merges` with input `{ name: String, message?: String }`.
 
 Validation rules:
 
@@ -188,15 +188,15 @@ On no conflicts:
 
 Commit flow changes:
 
-- In `/gitless/commits`, always set `parents` explicitly. For merge commits created by `/gitless/merges`, use `[targetHead, sourceHead]`. For normal commits, use `[targetHead]` or `[]` if no head exists.
+- In `/version-control/commits`, always set `parents` explicitly. For merge commits created by `/version-control/merges`, use `[targetHead, sourceHead]`. For normal commits, use `[targetHead]` or `[]` if no head exists.
 
 ### Wiring
 
-No new concepts are introduced in this phase, so wiring changes should be limited to updated Commit usage in `syncs/gitless/index.ts` and any helpers that construct commit inputs.
+No new concepts are introduced in this phase, so wiring changes should be limited to updated Commit usage in `syncs/version_control/index.ts` and any helpers that construct commit inputs.
 
 ### Tests
 
-Extend `syncs/gitless/gitless.test.ts` with two scenarios.
+Extend `syncs/version_control/version_control.test.ts` with two scenarios.
 
 - Non-conflicting merge: create feature branch, commit change on feature, merge into main, assert merge commit has two parents and main working copy reflects source change.
 - Conflict detection: diverge the same article on two branches, merge, assert HTTP 409 with `merge conflicts not supported` and ensure no working copy changes were applied.

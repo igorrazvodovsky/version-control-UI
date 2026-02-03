@@ -1,8 +1,8 @@
 import { Application, Router } from "jsr:@oak/oak";
 import { z } from "npm:zod";
-import { createRealWorldApp } from "./realworld_app.ts";
+import { createApp } from "./app.ts";
 
-const appPromise = createRealWorldApp();
+const appPromise = createApp();
 
 type RouteDef = {
     method: string;
@@ -151,33 +151,33 @@ const routes: RouteDef[] = [
         }).passthrough(),
     },
     { method: "GET", template: "/tags" },
-    { method: "POST", template: "/gitless/init" },
+    { method: "POST", template: "/version-control/init" },
     {
         method: "POST",
-        template: "/gitless/branches",
+        template: "/version-control/branches",
         inputSchema: z.object({
             name: z.string().trim().min(1),
         }).passthrough(),
     },
-    { method: "GET", template: "/gitless/branches" },
+    { method: "GET", template: "/version-control/branches" },
     {
         method: "PUT",
-        template: "/gitless/branches/current",
+        template: "/version-control/branches/current",
         inputSchema: z.object({
             name: z.string().trim().min(1),
         }).passthrough(),
     },
-    { method: "GET", template: "/gitless/branches/current" },
+    { method: "GET", template: "/version-control/branches/current" },
     {
         method: "GET",
-        template: "/gitless/branches/:name/changes",
+        template: "/version-control/branches/:name/changes",
         inputSchema: z.object({
             name: z.string().trim().min(1),
         }).passthrough(),
     },
     {
         method: "POST",
-        template: "/gitless/commits",
+        template: "/version-control/commits",
         inputSchema: z.object({
             message: z.string().trim().min(1),
         }).passthrough(),
@@ -379,7 +379,7 @@ function registerRoute(router: Router, route: RouteDef) {
     }
 }
 
-function createApp() {
+function createServerApp() {
     const app = new Application();
     const router = new Router();
 
@@ -413,7 +413,7 @@ function createApp() {
     return app;
 }
 
-const app = createApp();
+const app = createServerApp();
 
 export async function handleRequest(request: Request): Promise<Response> {
     const handler = (app as unknown as {

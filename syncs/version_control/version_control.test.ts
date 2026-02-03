@@ -8,7 +8,7 @@ import { CommitConcept } from "../../concepts/Commit.ts";
 import { CurrentBranchConcept } from "../../concepts/CurrentBranch.ts";
 import { TagConcept } from "../../concepts/Tag.ts";
 import { TagSnapshotConcept } from "../../concepts/TagSnapshot.ts";
-import { makeGitlessSyncs } from "./index.ts";
+import { makeVersionControlSyncs } from "./index.ts";
 
 const CURRENT_BRANCH_ID = "current:default";
 
@@ -28,7 +28,7 @@ function setup() {
     const { API, CurrentBranch, Branch, Commit, Article, ArticleSnapshot, Tag, TagSnapshot } =
         sync.instrument(concepts);
     sync.register(
-        makeGitlessSyncs(
+        makeVersionControlSyncs(
             API,
             CurrentBranch,
             Branch,
@@ -42,13 +42,13 @@ function setup() {
     return { API, CurrentBranch, Branch, Commit, Article, ArticleSnapshot, Tag, TagSnapshot };
 }
 
-Deno.test("gitless: branch switching and commit capture", async () => {
+Deno.test("version control: branch switching and commit capture", async () => {
     const { API, CurrentBranch, Branch, Article, ArticleSnapshot, Tag, TagSnapshot } = setup();
 
     await API.request({
         request: "r1",
         method: "POST",
-        path: "/gitless/init",
+        path: "/version-control/init",
         input: {},
     });
 
@@ -71,7 +71,7 @@ Deno.test("gitless: branch switching and commit capture", async () => {
     await API.request({
         request: "r2",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "init" },
     });
 
@@ -88,7 +88,7 @@ Deno.test("gitless: branch switching and commit capture", async () => {
     await API.request({
         request: "r3",
         method: "POST",
-        path: "/gitless/branches",
+        path: "/version-control/branches",
         input: { name: "feat" },
     });
 
@@ -98,7 +98,7 @@ Deno.test("gitless: branch switching and commit capture", async () => {
     await API.request({
         request: "r4",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "feat" },
     });
 
@@ -125,7 +125,7 @@ Deno.test("gitless: branch switching and commit capture", async () => {
     await API.request({
         request: "r5",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "main" },
     });
 
@@ -140,13 +140,13 @@ Deno.test("gitless: branch switching and commit capture", async () => {
     assertEqual(mainRow.body, "Body");
 });
 
-Deno.test("gitless: branch list and change list", async () => {
+Deno.test("version control: branch list and change list", async () => {
     const { API, Branch, Article } = setup();
 
     await API.request({
         request: "b1",
         method: "POST",
-        path: "/gitless/init",
+        path: "/version-control/init",
         input: {},
     });
 
@@ -167,21 +167,21 @@ Deno.test("gitless: branch list and change list", async () => {
     await API.request({
         request: "b2",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "init" },
     });
 
     await API.request({
         request: "b3",
         method: "POST",
-        path: "/gitless/branches",
+        path: "/version-control/branches",
         input: { name: "feat" },
     });
 
     await API.request({
         request: "b4",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "feat" },
     });
 
@@ -203,7 +203,7 @@ Deno.test("gitless: branch list and change list", async () => {
     await API.request({
         request: "b5",
         method: "GET",
-        path: "/gitless/branches",
+        path: "/version-control/branches",
         input: {},
     });
 
@@ -220,7 +220,7 @@ Deno.test("gitless: branch list and change list", async () => {
     await API.request({
         request: "b6",
         method: "GET",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: {},
     });
     const current = API._get({ request: "b6" })[0]?.output as {
@@ -231,7 +231,7 @@ Deno.test("gitless: branch list and change list", async () => {
     await API.request({
         request: "b7",
         method: "GET",
-        path: "/gitless/branches/:name/changes",
+        path: "/version-control/branches/:name/changes",
         input: { name: "feat" },
     });
     const changesResponse = API._get({ request: "b7" })[0];
@@ -244,13 +244,13 @@ Deno.test("gitless: branch list and change list", async () => {
     assertEqual(changesOutput.changes[0].changeType, "modified");
 });
 
-Deno.test("gitless: article history uses main branch", async () => {
+Deno.test("version control: article history uses main branch", async () => {
     const { API, Branch, Article } = setup();
 
     await API.request({
         request: "h1",
         method: "POST",
-        path: "/gitless/init",
+        path: "/version-control/init",
         input: {},
     });
 
@@ -271,7 +271,7 @@ Deno.test("gitless: article history uses main branch", async () => {
     await API.request({
         request: "h2",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "init" },
     });
 
@@ -293,14 +293,14 @@ Deno.test("gitless: article history uses main branch", async () => {
     await API.request({
         request: "h4",
         method: "POST",
-        path: "/gitless/branches",
+        path: "/version-control/branches",
         input: { name: "feat" },
     });
 
     await API.request({
         request: "h5",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "feat" },
     });
 
@@ -320,13 +320,13 @@ Deno.test("gitless: article history uses main branch", async () => {
     assertEqual(historyOutputFeat.history[0].message, "init");
 });
 
-Deno.test("gitless: commit merges edit branch into main", async () => {
+Deno.test("version control: commit merges edit branch into main", async () => {
     const { API, Branch, Article, Tag } = setup();
 
     await API.request({
         request: "m1",
         method: "POST",
-        path: "/gitless/init",
+        path: "/version-control/init",
         input: {},
     });
 
@@ -348,7 +348,7 @@ Deno.test("gitless: commit merges edit branch into main", async () => {
     await API.request({
         request: "m2",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "init" },
     });
 
@@ -358,7 +358,7 @@ Deno.test("gitless: commit merges edit branch into main", async () => {
     await API.request({
         request: "m3",
         method: "POST",
-        path: "/gitless/branches",
+        path: "/version-control/branches",
         input: { name: "feat" },
     });
 
@@ -368,7 +368,7 @@ Deno.test("gitless: commit merges edit branch into main", async () => {
     await API.request({
         request: "m4",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "feat" },
     });
 
@@ -389,7 +389,7 @@ Deno.test("gitless: commit merges edit branch into main", async () => {
     await API.request({
         request: "m5",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "feat" },
     });
 
@@ -414,13 +414,13 @@ Deno.test("gitless: commit merges edit branch into main", async () => {
     assertEqual(featBranch.status, "COMMITTED");
 });
 
-Deno.test("gitless: merge conflicts return error", async () => {
+Deno.test("version control: merge conflicts return error", async () => {
     const { API, Branch, Article } = setup();
 
     await API.request({
         request: "c1",
         method: "POST",
-        path: "/gitless/init",
+        path: "/version-control/init",
         input: {},
     });
 
@@ -441,7 +441,7 @@ Deno.test("gitless: merge conflicts return error", async () => {
     await API.request({
         request: "c2",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "init" },
     });
 
@@ -451,7 +451,7 @@ Deno.test("gitless: merge conflicts return error", async () => {
     await API.request({
         request: "c3",
         method: "POST",
-        path: "/gitless/branches",
+        path: "/version-control/branches",
         input: { name: "feat" },
     });
 
@@ -461,7 +461,7 @@ Deno.test("gitless: merge conflicts return error", async () => {
     await API.request({
         request: "c4",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "feat" },
     });
 
@@ -480,7 +480,7 @@ Deno.test("gitless: merge conflicts return error", async () => {
     await API.request({
         request: "c6",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "main" },
     });
 
@@ -499,14 +499,14 @@ Deno.test("gitless: merge conflicts return error", async () => {
     await API.request({
         request: "c7",
         method: "PUT",
-        path: "/gitless/branches/current",
+        path: "/version-control/branches/current",
         input: { name: "feat" },
     });
 
     await API.request({
         request: "c8",
         method: "POST",
-        path: "/gitless/commits",
+        path: "/version-control/commits",
         input: { message: "feat" },
     });
 

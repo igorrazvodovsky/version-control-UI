@@ -2,7 +2,7 @@
 status: complete
 priority: p2
 issue_id: "010"
-tags: [code-review, api, realworld, concept]
+tags: [code-review, api, app, concept]
 dependencies: []
 ---
 
@@ -10,14 +10,14 @@ dependencies: []
 
 ## Problem Statement
 
-Comment API responses always return empty `createdAt`/`updatedAt` fields, even though the Comment concept stores timestamps. This breaks the RealWorld contract for comment payloads and makes the API responses misleading for clients that expect ISO timestamps.
+Comment API responses always return empty `createdAt`/`updatedAt` fields, even though the Comment concept stores timestamps. This breaks the API contract for comment payloads and makes the API responses misleading for clients that expect ISO timestamps.
 
 ## Findings
 
-- `buildCommentView` hard-codes empty strings for timestamps in `syncs/realworld/format.ts:216-220`.
+- `buildCommentView` hard-codes empty strings for timestamps in `syncs/app/format.ts:216-220`.
 - `CommentConcept` stores `createdAt`/`updatedAt` but `_get` does not expose them (`concepts/Comment.ts:2-45`), so the formatter cannot access real values.
 - `specs/Comment.concept` omits timestamps from `_get`, which blocks using them in sync formatting.
-- Existing RealWorld sync tests (`syncs/realworld/realworld.test.ts`) assert comment id/body only, so the gap is currently untested.
+- Existing API sync tests (`syncs/app/app.test.ts`) assert comment id/body only, so the gap is currently untested.
 
 ## Proposed Solutions
 
@@ -28,7 +28,7 @@ Comment API responses always return empty `createdAt`/`updatedAt` fields, even t
 **Pros:**
 - Minimal data plumbing changes
 - Reuses existing state
-- Simplest path for RealWorld response correctness
+- Simplest path for API response correctness
 
 **Cons:**
 - Changes concept query shape (may require updates in callers/tests)
@@ -78,17 +78,17 @@ Implemented Option 1: extended `CommentConcept._get` to expose timestamps, updat
 ## Technical Details
 
 **Affected files:**
-- `syncs/realworld/format.ts:216-220` - empty timestamps in `buildCommentView`
+- `syncs/app/format.ts:216-220` - empty timestamps in `buildCommentView`
 - `concepts/Comment.ts:2-45` - timestamps stored but not returned
 - `specs/Comment.concept` - query shape omits timestamps
-- `syncs/realworld/realworld.test.ts` - lacks timestamp assertions
+- `syncs/app/app.test.ts` - lacks timestamp assertions
 
 **Database changes (if any):**
 - None
 
 ## Resources
 
-- RealWorld API spec expects `createdAt`/`updatedAt` on comments
+- API spec expects `createdAt`/`updatedAt` on comments
 
 ## Acceptance Criteria
 
@@ -110,7 +110,7 @@ Implemented Option 1: extended `CommentConcept._get` to expose timestamps, updat
 
 **Learnings:**
 - Comment timestamps are stored but not exposed
-- RealWorld responses are currently missing required fields
+- API responses are currently missing required fields
 
 ---
 
@@ -121,8 +121,8 @@ Implemented Option 1: extended `CommentConcept._get` to expose timestamps, updat
 **Actions:**
 - Updated `concepts/Comment.ts` to return `createdAt`/`updatedAt` in `_get`
 - Updated `specs/Comment.concept` query signature
-- Updated `syncs/realworld/format.ts` to emit real timestamps
-- Added assertions in `concepts/test/comment.test.ts` and `syncs/realworld/realworld.test.ts`
+- Updated `syncs/app/format.ts` to emit real timestamps
+- Added assertions in `concepts/test/comment.test.ts` and `syncs/app/app.test.ts`
 
 **Learnings:**
 - Comment timestamps were already stored; the fix was primarily query + formatting plumbing

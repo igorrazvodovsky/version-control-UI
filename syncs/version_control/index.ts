@@ -6,9 +6,9 @@ import type { ArticleConcept } from "../../concepts/Article.ts";
 import type { ArticleSnapshotConcept } from "../../concepts/ArticleSnapshot.ts";
 import type { TagConcept } from "../../concepts/Tag.ts";
 import type { TagSnapshotConcept } from "../../concepts/TagSnapshot.ts";
-import { makeGitlessArticleSyncs } from "./articles.ts";
+import { makeVersionControlArticleSyncs } from "./articles.ts";
 
-export function makeGitlessSyncs(
+export function makeVersionControlSyncs(
     API: APIConcept,
     CurrentBranch: CurrentBranchConcept,
     Branch: BranchConcept,
@@ -19,7 +19,7 @@ export function makeGitlessSyncs(
     TagSnapshot: TagSnapshotConcept,
 ) {
     return {
-        ...makeGitlessArticleSyncs(
+        ...makeVersionControlArticleSyncs(
             API,
             CurrentBranch,
             Branch,

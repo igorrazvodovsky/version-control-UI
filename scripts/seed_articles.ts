@@ -1,4 +1,4 @@
-import { slugifyTitle } from "../syncs/realworld/helpers.ts";
+import { slugifyTitle } from "../syncs/app/helpers.ts";
 
 type SeedUser = {
   username: string;
@@ -37,12 +37,12 @@ const users: SeedUser[] = [
 
 const articles: SeedArticle[] = [
   {
-    title: "Welcome to RealWorld",
-    description: "A quick tour of the RealWorld API and concepts.",
+    title: "Welcome",
+    description: "A quick tour of the API and concepts.",
     body:
       "This is a seeded article to help verify the articles list UI. It is safe to delete.",
     author: "alice",
-    tagList: ["intro", "realworld"],
+    tagList: ["intro", "api"],
   },
   {
     title: "Concept Design in Practice",
@@ -54,11 +54,11 @@ const articles: SeedArticle[] = [
   },
   {
     title: "Branches, Commits, and Articles",
-    description: "How Gitless-style branches interact with articles.",
+    description: "How version control branches interact with articles.",
     body:
       "This demo article exists to show branch-aware article lists in the UI.",
     author: "carol",
-    tagList: ["gitless", "branches"],
+    tagList: ["version control", "branches"],
   },
   {
     title: "Building the UI",
@@ -109,8 +109,8 @@ function getErrorMessages(payload: ApiError | null): string[] {
   return [];
 }
 
-async function ensureGitlessInit() {
-  const { response, data } = await requestJson("/gitless/init", {
+async function ensureVersionControlInit() {
+  const { response, data } = await requestJson("/version-control/init", {
     method: "POST",
     body: JSON.stringify({}),
   });
@@ -203,7 +203,7 @@ async function seedArticles() {
 }
 
 async function ensureSeedCommit() {
-  const { response, data } = await requestJson("/gitless/branches/main/changes", {
+  const { response, data } = await requestJson("/version-control/branches/main/changes", {
     method: "GET",
   });
 
@@ -217,12 +217,12 @@ async function ensureSeedCommit() {
   const payload = data as BranchChangesResponse | null;
   const changes = Array.isArray(payload?.changes) ? payload.changes : [];
   if (changes.length === 0) {
-    console.log("No gitless changes to commit.");
+    console.log("No version control changes to commit.");
     return;
   }
 
   const { response: commitResponse, data: commitData } = await requestJson(
-    "/gitless/commits",
+    "/version-control/commits",
     {
       method: "POST",
       body: JSON.stringify({ message: "seed" }),
@@ -236,12 +236,12 @@ async function ensureSeedCommit() {
     );
   }
 
-  console.log(`Created gitless commit for ${changes.length} change(s).`);
+  console.log(`Created version control commit for ${changes.length} change(s).`);
 }
 
 async function main() {
-  console.log(`Seeding RealWorld articles via ${API_BASE_URL}`);
-  await ensureGitlessInit();
+  console.log(`Seeding demo articles via ${API_BASE_URL}`);
+  await ensureVersionControlInit();
   await ensureUsers();
   await seedArticles();
   await ensureSeedCommit();

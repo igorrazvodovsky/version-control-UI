@@ -11,10 +11,10 @@ import { ProfileConcept } from "./concepts/Profile.ts";
 import { TagConcept } from "./concepts/Tag.ts";
 import { TagSnapshotConcept } from "./concepts/TagSnapshot.ts";
 import { UserConcept } from "./concepts/User.ts";
-import { makeGitlessSyncs } from "./syncs/gitless/index.ts";
-import { makeRealWorldSyncs } from "./syncs/realworld/index.ts";
+import { makeVersionControlSyncs } from "./syncs/version_control/index.ts";
+import { makeAppSyncs } from "./syncs/app/index.ts";
 
-export async function createRealWorldApp() {
+export async function createApp() {
     const sync = new SyncConcept();
     sync.logging = Logging.OFF;
     const concepts = {
@@ -47,7 +47,7 @@ export async function createRealWorldApp() {
     } = sync.instrument(concepts);
 
     sync.register({
-        ...makeGitlessSyncs(
+        ...makeVersionControlSyncs(
             API,
             CurrentBranch,
             Branch,
@@ -57,7 +57,7 @@ export async function createRealWorldApp() {
             Tag,
             TagSnapshot,
         ),
-        ...makeRealWorldSyncs(
+        ...makeAppSyncs(
             API,
             CurrentBranch,
             User,
@@ -70,9 +70,9 @@ export async function createRealWorldApp() {
     });
 
     await API.request({
-        request: "gitless:init",
+        request: "version-control:init",
         method: "POST",
-        path: "/gitless/init",
+        path: "/version-control/init",
         input: {},
     });
 

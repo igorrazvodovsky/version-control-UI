@@ -8,13 +8,13 @@ import { FavoriteConcept } from "../../concepts/Favorite.ts";
 import { ProfileConcept } from "../../concepts/Profile.ts";
 import { TagConcept } from "../../concepts/Tag.ts";
 import { UserConcept } from "../../concepts/User.ts";
-import { createRealWorldApp } from "../../realworld_app.ts";
-import { makeRealWorldSyncs } from "./index.ts";
+import { createApp } from "../../app.ts";
+import { makeAppSyncs } from "./index.ts";
 
 const DEFAULT_BRANCH = "branch:main";
 
-Deno.test("realworld syncs: register and profile", async () => {
-    const { API } = await createRealWorldApp();
+Deno.test("app syncs: register and profile", async () => {
+    const { API } = await createApp();
 
     await API.request({
         request: "r1",
@@ -82,8 +82,8 @@ Deno.test("realworld syncs: register and profile", async () => {
     assertEqual(Array.isArray(missingOut.errors.body), true);
 });
 
-Deno.test("realworld syncs: article lifecycle", async () => {
-    const { API, Article, Comment, Tag, Favorite } = await createRealWorldApp();
+Deno.test("app syncs: article lifecycle", async () => {
+    const { API, Article, Comment, Tag, Favorite } = await createApp();
 
     await API.request({
         request: "r1",
@@ -213,7 +213,7 @@ Deno.test("realworld syncs: article lifecycle", async () => {
     assertEqual(remainingComments.length, 0);
 });
 
-Deno.test("realworld syncs: missing current branch returns error", async () => {
+Deno.test("app syncs: missing current branch returns error", async () => {
     const sync = new SyncConcept();
     sync.logging = Logging.OFF;
     const concepts = {
@@ -238,7 +238,7 @@ Deno.test("realworld syncs: missing current branch returns error", async () => {
     } = sync.instrument(concepts);
 
     sync.register(
-        makeRealWorldSyncs(
+        makeAppSyncs(
             API,
             CurrentBranch,
             User,

@@ -2,12 +2,12 @@ import { DEFAULT_API_BASE_URL } from "@/lib/articles";
 
 type Fetcher = typeof fetch;
 
-export type GitlessBranchStatus = "MAIN" | "IN_PROGRESS" | "COMMITTED";
+export type VersionControlBranchStatus = "MAIN" | "IN_PROGRESS" | "COMMITTED";
 
-export type GitlessBranch = {
+export type VersionControlBranch = {
   id: string;
   name: string;
-  status: GitlessBranchStatus;
+  status: VersionControlBranchStatus;
   head?: string | null;
   isCurrent?: boolean;
 };
@@ -21,17 +21,17 @@ export type BranchChange = {
 };
 
 export type BranchListResponse = {
-  branches: GitlessBranch[];
+  branches: VersionControlBranch[];
 };
 
 export type BranchChangesResponse = {
-  branch: GitlessBranch;
+  branch: VersionControlBranch;
   baseCommit: string | null;
   changes: BranchChange[];
 };
 
 export type CurrentBranchResponse = {
-  branch: GitlessBranch;
+  branch: VersionControlBranch;
 };
 
 type FetchOptions = {
@@ -53,14 +53,14 @@ async function fetchJson<T>(url: string, fetcher: Fetcher, requestInit?: Request
 export async function fetchBranches(
   { baseUrl = DEFAULT_API_BASE_URL, fetcher = fetch, requestInit }: FetchOptions = {},
 ): Promise<BranchListResponse> {
-  const url = new URL("/gitless/branches", baseUrl).toString();
+  const url = new URL("/version-control/branches", baseUrl).toString();
   return fetchJson<BranchListResponse>(url, fetcher, requestInit);
 }
 
 export async function fetchCurrentBranch(
   { baseUrl = DEFAULT_API_BASE_URL, fetcher = fetch, requestInit }: FetchOptions = {},
 ): Promise<CurrentBranchResponse> {
-  const url = new URL("/gitless/branches/current", baseUrl).toString();
+  const url = new URL("/version-control/branches/current", baseUrl).toString();
   return fetchJson<CurrentBranchResponse>(url, fetcher, requestInit);
 }
 
@@ -72,7 +72,7 @@ export async function fetchBranchChanges(
     name,
   }: FetchOptions & { name: string },
 ): Promise<BranchChangesResponse> {
-  const url = new URL(`/gitless/branches/${encodeURIComponent(name)}/changes`, baseUrl).toString();
+  const url = new URL(`/version-control/branches/${encodeURIComponent(name)}/changes`, baseUrl).toString();
   return fetchJson<BranchChangesResponse>(url, fetcher, requestInit);
 }
 
@@ -84,7 +84,7 @@ export async function createBranch(
     name,
   }: FetchOptions & { name: string },
 ): Promise<{ ok: boolean; branch: { id: string; name: string } }> {
-  const url = new URL("/gitless/branches", baseUrl).toString();
+  const url = new URL("/version-control/branches", baseUrl).toString();
   return fetchJson(url, fetcher, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -101,7 +101,7 @@ export async function switchBranch(
     name,
   }: FetchOptions & { name: string },
 ): Promise<{ ok: boolean; branch: string }> {
-  const url = new URL("/gitless/branches/current", baseUrl).toString();
+  const url = new URL("/version-control/branches/current", baseUrl).toString();
   return fetchJson(url, fetcher, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -118,7 +118,7 @@ export async function commitBranch(
     message,
   }: FetchOptions & { message: string },
 ): Promise<{ ok: boolean; commit: string }> {
-  const url = new URL("/gitless/commits", baseUrl).toString();
+  const url = new URL("/version-control/commits", baseUrl).toString();
   return fetchJson(url, fetcher, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

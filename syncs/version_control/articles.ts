@@ -1,5 +1,5 @@
 import { actions, Frames, Vars } from "../../engine/mod.ts";
-import { asRecord, getOptionalString, getString } from "../realworld/helpers.ts";
+import { asRecord, getOptionalString, getString } from "../app/helpers.ts";
 import type { APIConcept } from "../../concepts/API.ts";
 import type { CurrentBranchConcept } from "../../concepts/CurrentBranch.ts";
 import type { BranchConcept } from "../../concepts/Branch.ts";
@@ -525,7 +525,7 @@ function buildMergePlan(
     };
 }
 
-export function makeGitlessArticleSyncs(
+export function makeVersionControlArticleSyncs(
     API: APIConcept,
     CurrentBranch: CurrentBranchConcept,
     Branch: BranchConcept,
@@ -537,7 +537,7 @@ export function makeGitlessArticleSyncs(
 ) {
     const InitBranchCreate = ({ request, branch, name }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/init" }, { request }],
+            [API.request, { method: "POST", path: "/version-control/init" }, { request }],
         ),
         where: (frames: Frames) =>
             frames.flatMap((frame) => {
@@ -555,7 +555,7 @@ export function makeGitlessArticleSyncs(
 
     const InitBranchSetCurrent = ({ request, branch, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/init" }, { request }],
+            [API.request, { method: "POST", path: "/version-control/init" }, { request }],
         ),
         where: (frames: Frames) =>
             frames.map((frame) => {
@@ -576,7 +576,7 @@ export function makeGitlessArticleSyncs(
 
     const CreateBranch = ({ request, input, name, branch }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/branches", input }, {
+            [API.request, { method: "POST", path: "/version-control/branches", input }, {
                 request,
             }],
         ),
@@ -598,7 +598,7 @@ export function makeGitlessArticleSyncs(
 
     const CreateBranchMissing = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/branches", input }, {
+            [API.request, { method: "POST", path: "/version-control/branches", input }, {
                 request,
             }],
         ),
@@ -618,7 +618,7 @@ export function makeGitlessArticleSyncs(
 
     const CreateBranchExists = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/branches", input }, {
+            [API.request, { method: "POST", path: "/version-control/branches", input }, {
                 request,
             }],
         ),
@@ -640,7 +640,7 @@ export function makeGitlessArticleSyncs(
 
     const CreateBranchResponse = ({ request, input, branch, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/branches", input }, {
+            [API.request, { method: "POST", path: "/version-control/branches", input }, {
                 request,
             }],
             [Branch.create, { branch }, { branch }],
@@ -666,7 +666,7 @@ export function makeGitlessArticleSyncs(
 
     const CloneBranchHeadOnCreate = ({ branch, sourceBranch, commit }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/branches" }, {}],
+            [API.request, { method: "POST", path: "/version-control/branches" }, {}],
             [Branch.create, { branch }, { branch }],
         ),
         where: (frames: Frames) =>
@@ -692,7 +692,7 @@ export function makeGitlessArticleSyncs(
         article,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/branches" }, {}],
+            [API.request, { method: "POST", path: "/version-control/branches" }, {}],
             [Branch.create, { branch }, { branch }],
         ),
         where: (frames: Frames) =>
@@ -731,7 +731,7 @@ export function makeGitlessArticleSyncs(
         when: actions(
             [API.request, {
                 method: "PUT",
-                path: "/gitless/branches/current",
+                path: "/version-control/branches/current",
                 input,
             }, { request }],
         ),
@@ -759,7 +759,7 @@ export function makeGitlessArticleSyncs(
         when: actions(
             [API.request, {
                 method: "PUT",
-                path: "/gitless/branches/current",
+                path: "/version-control/branches/current",
                 input,
             }, { request }],
         ),
@@ -781,7 +781,7 @@ export function makeGitlessArticleSyncs(
         when: actions(
             [API.request, {
                 method: "PUT",
-                path: "/gitless/branches/current",
+                path: "/version-control/branches/current",
                 input,
             }, { request }],
         ),
@@ -803,7 +803,7 @@ export function makeGitlessArticleSyncs(
 
     const ListBranches = ({ request, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "GET", path: "/gitless/branches" }, { request }],
+            [API.request, { method: "GET", path: "/version-control/branches" }, { request }],
         ),
         where: (frames: Frames) =>
             frames.map((frame) => {
@@ -832,7 +832,7 @@ export function makeGitlessArticleSyncs(
 
     const GetCurrentBranch = ({ request, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "GET", path: "/gitless/branches/current" }, {
+            [API.request, { method: "GET", path: "/version-control/branches/current" }, {
                 request,
             }],
         ),
@@ -860,7 +860,7 @@ export function makeGitlessArticleSyncs(
 
     const GetCurrentBranchMissing = ({ request, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "GET", path: "/gitless/branches/current" }, {
+            [API.request, { method: "GET", path: "/version-control/branches/current" }, {
                 request,
             }],
         ),
@@ -881,7 +881,7 @@ export function makeGitlessArticleSyncs(
         when: actions(
             [API.request, {
                 method: "GET",
-                path: "/gitless/branches/:name/changes",
+                path: "/version-control/branches/:name/changes",
                 input,
             }, { request }],
         ),
@@ -924,7 +924,7 @@ export function makeGitlessArticleSyncs(
         when: actions(
             [API.request, {
                 method: "GET",
-                path: "/gitless/branches/:name/changes",
+                path: "/version-control/branches/:name/changes",
                 input,
             }, { request }],
         ),
@@ -946,7 +946,7 @@ export function makeGitlessArticleSyncs(
         when: actions(
             [API.request, {
                 method: "GET",
-                path: "/gitless/branches/:name/changes",
+                path: "/version-control/branches/:name/changes",
                 input,
             }, { request }],
         ),
@@ -1075,7 +1075,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeMissingName = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1095,7 +1095,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeNoCurrentBranch = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1117,7 +1117,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeSourceNotFound = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1141,7 +1141,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeBranchConflict = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1164,7 +1164,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeNoHead = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1191,7 +1191,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeConflict = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1240,7 +1240,7 @@ export function makeGitlessArticleSyncs(
         author,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1294,7 +1294,7 @@ export function makeGitlessArticleSyncs(
         body,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1338,7 +1338,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeApplyRemoves = ({ request, input, article }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1379,7 +1379,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeApplyTagAdds = ({ request, input, target, tag }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1424,7 +1424,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeApplyTagRemoves = ({ request, input, target, tag }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1477,7 +1477,7 @@ export function makeGitlessArticleSyncs(
         sourceBranch,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
         ),
@@ -1525,7 +1525,7 @@ export function makeGitlessArticleSyncs(
 
     const MergeResponse = ({ request, input, commit, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/merges", input }, {
+            [API.request, { method: "POST", path: "/version-control/merges", input }, {
                 request,
             }],
             [Commit.create, { commit }, { commit }],
@@ -1548,7 +1548,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitMissingMessage = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1568,7 +1568,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitNoCurrentBranch = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1590,7 +1590,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitConflict = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1613,7 +1613,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitMergeConflict = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1653,7 +1653,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitMergeNoChanges = ({ request, input, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1695,7 +1695,7 @@ export function makeGitlessArticleSyncs(
         message,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1731,7 +1731,7 @@ export function makeGitlessArticleSyncs(
         message,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1770,7 +1770,7 @@ export function makeGitlessArticleSyncs(
         author,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1818,7 +1818,7 @@ export function makeGitlessArticleSyncs(
         body,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1856,7 +1856,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitMergeApplyRemoves = ({ request, input, article }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1891,7 +1891,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitMergeApplyTagAdds = ({ request, input, article, tag, slug }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1941,7 +1941,7 @@ export function makeGitlessArticleSyncs(
         slug,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -1993,7 +1993,7 @@ export function makeGitlessArticleSyncs(
         sourceBranch,
     }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+            [API.request, { method: "POST", path: "/version-control/commits", input }, {
                 request,
             }],
         ),
@@ -2049,7 +2049,7 @@ export function makeGitlessArticleSyncs(
 
     const CommitResponse = ({ request, commit, output, code }: Vars) => ({
         when: actions(
-            [API.request, { method: "POST", path: "/gitless/commits" }, { request }],
+            [API.request, { method: "POST", path: "/version-control/commits" }, { request }],
             [Commit.create, {}, { commit }],
         ),
         where: (frames: Frames) =>

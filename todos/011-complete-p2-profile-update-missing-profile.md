@@ -16,7 +16,7 @@ dependencies: []
 
 - `concepts/Profile.ts:15-22` returns `{ profile }` for missing profile on bio updates, but `{ error: "profile not found" }` for image updates.
 - The concept spec (`specs/Profile.concept`) does not define behavior for missing profiles, leaving update semantics ambiguous.
-- RealWorld syncs currently resolve the profile before calling update, so this bug is latent today, but direct usage of the concept can return success for a no-op.
+- API syncs currently resolve the profile before calling update, so this bug is latent today, but direct usage of the concept can return success for a no-op.
 
 ## Proposed Solutions
 

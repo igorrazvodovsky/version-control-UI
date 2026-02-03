@@ -12,7 +12,7 @@ import { makeCommentSyncs } from "./comments.ts";
 import { makeFavoriteTagSyncs } from "./favorites_tags.ts";
 import { makeUserProfileSyncs } from "./user_profile.ts";
 
-export function makeRealWorldSyncs(
+export function makeAppSyncs(
     API: APIConcept,
     CurrentBranch: CurrentBranchConcept,
     User: UserConcept,

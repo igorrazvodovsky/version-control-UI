@@ -1,4 +1,4 @@
-# Add RealWorld Concepts
+# Add API Concepts
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
@@ -6,12 +6,12 @@ Maintain this plan in accordance with `.agent/PLANS.md` at the repository root.
 
 ## Purpose / Big Picture
 
-After this change, the repository will contain concept specifications and in-memory TypeScript implementations for the RealWorld (Conduit) domain described in `docs/resources/wysiwid.md`. A developer will be able to instantiate the concepts, call their actions, and run tests that demonstrate each concept's operational principle. This establishes the foundation needed to later wire RealWorld synchronizations without modifying concept code.
+After this change, the repository will contain concept specifications and in-memory TypeScript implementations for the API domain described in `docs/resources/wysiwid.md`. A developer will be able to instantiate the concepts, call their actions, and run tests that demonstrate each concept's operational principle. This establishes the foundation needed to later wire API synchronizations without modifying concept code.
 
 ## Progress
 
-- [x] (2026-02-01 00:00Z) Drafted ExecPlan for adding RealWorld concepts.
-- [x] (2026-02-01 00:30Z) Add SSF concept specs for the RealWorld domain (User, Profile, Article, Comment, Tag, Favorite) and update API for RealWorld bootstrap needs.
+- [x] (2026-02-01 00:00Z) Drafted ExecPlan for adding API concepts.
+- [x] (2026-02-01 00:30Z) Add SSF concept specs for the API domain (User, Profile, Article, Comment, Tag, Favorite) and update API for API bootstrap needs.
 - [x] (2026-02-01 00:35Z) Implement TypeScript concept classes in `concepts/` with in-memory state and query methods.
 - [x] (2026-02-01 00:55Z) Add Deno tests for each concept's operational principle in `concepts/test/`.
 - [x] Validate by running concept tests and existing engine tests.
@@ -27,7 +27,7 @@ After this change, the repository will contain concept specifications and in-mem
   Rationale: The repository's SSF grammar expects object types in set declarations, and the existing examples use concrete object types. This keeps specs valid and consistent.
   Date/Author: 2026-02-01 / assistant
 - Decision: Standardize on `API` as the bootstrap concept (no `Web` concept).
-  Rationale: User request; keep naming consistent with the existing repository and extend `API` to cover RealWorld bootstrap needs.
+  Rationale: User request; keep naming consistent with the existing repository and extend `API` to cover API bootstrap needs.
   Date/Author: 2026-02-01 / assistant
 - Decision: Implement all concepts with in-memory Maps/Sets and simple validation.
   Rationale: This matches the repository's educational focus, keeps concepts independent, and is sufficient for validating operational principles.
@@ -38,7 +38,7 @@ After this change, the repository will contain concept specifications and in-mem
 
 ## Outcomes & Retrospective
 
-Specs, implementations, tests, and README updates landed for the reduced RealWorld scope (API, User, Profile, Article, Comment, Tag, Favorite). Validation is pending until Deno is available.
+Specs, implementations, tests, and README updates landed for the reduced API scope (API, User, Profile, Article, Comment, Tag, Favorite). Validation is pending until Deno is available.
 
 ## Context and Orientation
 
@@ -48,7 +48,7 @@ In this plan, all object identifiers (Users, Articles, etc.) are represented as 
 
 ## Plan of Work
 
-Milestone 1 creates SSF concept specifications for the RealWorld domain based on the case study described in `docs/resources/wysiwid.md`. The User and Profile specs are adapted directly from Appendix B and Section 4 of the paper into SSF format, while Article, Comment, Tag, Favorite, and API are defined or updated to cover the RealWorld features described (articles, comments, tags, favorites, and HTTP bootstrap). Each spec includes action overloads for success and error paths, plus at least one query method.
+Milestone 1 creates SSF concept specifications for the API domain based on the case study described in `docs/resources/wysiwid.md`. The User and Profile specs are adapted directly from Appendix B and Section 4 of the paper into SSF format, while Article, Comment, Tag, Favorite, and API are defined or updated to cover the API features described (articles, comments, tags, favorites, and HTTP bootstrap). Each spec includes action overloads for success and error paths, plus at least one query method.
 
 Milestone 2 implements each concept as a standalone TypeScript class in `concepts/`. Each class uses in-memory Maps/Sets, validates uniqueness and existence, and returns `{ error: string }` for invalid actions. Query methods return arrays and never mutate state. No concept imports another concept.
 
@@ -502,6 +502,6 @@ Implement `concepts/API.ts` exporting `APIConcept` with:
 
 ## Change Log
 
-2026-02-01: Initial plan written and saved to `docs/plans/realworld-concepts.md` at user request.
+2026-02-01: Initial plan written and saved to `docs/plans/app-concepts.md` at user request.
 2026-02-01: Updated plan to standardize on API as the bootstrap concept and removed Web references per user request.
 2026-02-01: Removed JWT, Password, and Follow from scope per user request.

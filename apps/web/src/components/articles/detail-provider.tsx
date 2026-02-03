@@ -26,8 +26,8 @@ import {
   fetchCurrentBranch,
   switchBranch,
   type BranchChange,
-  type GitlessBranch,
-} from "@/lib/gitless"
+  type VersionControlBranch,
+} from "@/lib/version-control"
 
 const AUTOSAVE_DELAY_MS = 1200
 const DEFAULT_HISTORY_LIMIT = 20
@@ -53,7 +53,7 @@ type ArticleDetailContextValue = {
   saveStatus: SaveStatus
   saveError: string | null
   statusLabel: string
-  branches: GitlessBranch[]
+  branches: VersionControlBranch[]
   branchesLoading: boolean
   selectedBranch: string | null
   branchChanges: BranchChange[]
@@ -72,7 +72,7 @@ type ArticleDetailProviderProps = {
 
 const ArticleDetailContext = createContext<ArticleDetailContextValue | null>(null)
 
-const findReusableBranch = (branches: GitlessBranch[]) => {
+const findReusableBranch = (branches: VersionControlBranch[]) => {
   return branches.find((branch) => branch.name !== "main" && branch.status === "IN_PROGRESS") ?? null
 }
 
@@ -88,8 +88,8 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [branches, setBranches] = useState<GitlessBranch[]>([])
-  const [currentBranch, setCurrentBranch] = useState<GitlessBranch | null>(null)
+  const [branches, setBranches] = useState<VersionControlBranch[]>([])
+  const [currentBranch, setCurrentBranch] = useState<VersionControlBranch | null>(null)
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
   const [branchChanges, setBranchChanges] = useState<BranchChange[]>([])
   const [branchBaseCommit, setBranchBaseCommit] = useState<string | null>(null)

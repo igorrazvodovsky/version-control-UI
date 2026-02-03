@@ -83,7 +83,7 @@ deno run -A engine/test/run.ts
 
 ## HTTP API + Frontend
 
-The backend exposes RealWorld HTTP endpoints via `server.ts`. A minimal Next.js
+The backend exposes HTTP endpoints via `server.ts`. A minimal Next.js
 frontend lives in `apps/web` and renders the articles list from `GET /articles`.
 
 Start the backend (from repo root):
@@ -307,10 +307,10 @@ Synchronizations live under `syncs/`. They connect
 `API.response`. To exercise them locally, run:
 
 ```
-deno test syncs/realworld/realworld.test.ts
+deno test syncs/app/app.test.ts
 ```
 
-The tests simulate RealWorld-style API calls (register, create article, favorite,
+The tests simulate API calls (register, create article, favorite,
 comments, tags, delete) and verify that responses are stored in `API` state.
 
 Set logging on the engine to trace flows and matches:
@@ -338,4 +338,3 @@ curl -X POST http://localhost:8080/users \\
   -H "Content-Type: application/json" \\
   -d '{"username":"alice","email":"a@b.com"}'
 ```
-
