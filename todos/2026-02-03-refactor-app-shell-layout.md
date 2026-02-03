@@ -1,0 +1,7 @@
+- [x] Create shared shell components (nav config + AppShell) and route group layout
+- [x] Move home page into (shell) group and extract home right sidebar slot
+- [x] Extract article detail provider + split main/sidebar components
+- [x] Move article detail route into (shell) group and wire right sidebar slot
+- [x] Update plan progress checkboxes
+- [x] Run lint (npm run lint)
+- [ ] Manual validation notes (start dev server, check / and /articles/[slug])
