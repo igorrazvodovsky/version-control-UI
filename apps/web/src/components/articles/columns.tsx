@@ -2,7 +2,10 @@
 
 import type { ColumnDef } from '@tanstack/react-table'
 
+import Link from 'next/link'
+
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import type { Article } from '@/lib/articles'
 
 export const columns: ColumnDef<Article>[] = [
@@ -65,6 +68,17 @@ export const columns: ColumnDef<Article>[] = [
     header: () => <div className="text-right">Favorites</div>,
     cell: ({ row }) => (
       <div className="text-right text-sm font-medium">{row.original.favoritesCount}</div>
+    ),
+  },
+  {
+    id: 'open',
+    header: () => <div className="text-right">Open</div>,
+    cell: ({ row }) => (
+      <div className="text-right">
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/articles/${row.original.slug}`}>View</Link>
+        </Button>
+      </div>
     ),
   },
 ]

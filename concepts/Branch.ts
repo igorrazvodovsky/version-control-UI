@@ -4,6 +4,7 @@ export class BranchConcept {
         {
             name: string;
             head?: string;
+            status: "MAIN" | "IN_PROGRESS" | "COMMITTED";
             createdAt: string;
         }
     >();
@@ -21,7 +22,8 @@ export class BranchConcept {
             return { error: "name not unique" };
         }
         const now = new Date().toISOString();
-        this.branches.set(branch, { name: trimmedName, createdAt: now });
+        const status = trimmedName === "main" ? "MAIN" : "IN_PROGRESS";
+        this.branches.set(branch, { name: trimmedName, createdAt: now, status });
         this.byName.set(trimmedName, branch);
         return { branch };
     }
@@ -35,14 +37,35 @@ export class BranchConcept {
         return { branch };
     }
 
+    setStatus({
+        branch,
+        status,
+    }: {
+        branch: string;
+        status: "MAIN" | "IN_PROGRESS" | "COMMITTED";
+    }) {
+        const existing = this.branches.get(branch);
+        if (!existing) {
+            return { error: "branch not found" };
+        }
+        existing.status = status;
+        return { branch };
+    }
+
     _get({ branch }: { branch: string }): {
         branch: string;
         name: string;
         head: string | undefined;
+        status: string;
     }[] {
         const existing = this.branches.get(branch);
         if (!existing) return [];
-        return [{ branch, name: existing.name, head: existing.head }];
+        return [{
+            branch,
+            name: existing.name,
+            head: existing.head,
+            status: existing.status,
+        }];
     }
 
     _getByName({ name }: { name: string }): { branch: string }[] {

@@ -159,9 +159,18 @@ const routes: RouteDef[] = [
             name: z.string().trim().min(1),
         }).passthrough(),
     },
+    { method: "GET", template: "/gitless/branches" },
     {
         method: "PUT",
         template: "/gitless/branches/current",
+        inputSchema: z.object({
+            name: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    { method: "GET", template: "/gitless/branches/current" },
+    {
+        method: "GET",
+        template: "/gitless/branches/:name/changes",
         inputSchema: z.object({
             name: z.string().trim().min(1),
         }).passthrough(),
@@ -171,6 +180,14 @@ const routes: RouteDef[] = [
         template: "/gitless/commits",
         inputSchema: z.object({
             message: z.string().trim().min(1),
+        }).passthrough(),
+    },
+    {
+        method: "GET",
+        template: "/articles/:slug/history",
+        inputSchema: z.object({
+            slug: z.string().trim().min(1),
+            limit: z.string().optional(),
         }).passthrough(),
     },
 ];

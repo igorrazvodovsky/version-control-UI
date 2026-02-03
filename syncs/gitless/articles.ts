@@ -21,6 +21,10 @@ function getCurrentBranch(CurrentBranch: CurrentBranchConcept) {
     return CurrentBranch._get({ current: CURRENT_BRANCH_ID })[0]?.branch;
 }
 
+function getMainBranchId(Branch: BranchConcept) {
+    return Branch._getByName({ name: DEFAULT_BRANCH_NAME })[0]?.branch;
+}
+
 function hasConflict(Article: ArticleConcept, branch: string) {
     const articleIds = Article._listByBranch({ branch }).map((row) => row.article);
     for (const articleId of articleIds) {
@@ -41,6 +45,15 @@ type ArticleContent = {
 type TargetArticle = {
     id: string;
     content: ArticleContent;
+    updatedAt: string;
+};
+
+type BranchChange = {
+    slug: string;
+    title: string;
+    changeType: "added" | "modified" | "deleted";
+    fieldsChanged: string[];
+    updatedAt: string | null;
 };
 
 type MergePlan = {
@@ -158,6 +171,7 @@ function buildTargetArticles(Article: ArticleConcept, branch: string) {
                         author: row.author,
                         deleted: row.deleted,
                     },
+                    updatedAt: row.updatedAt,
                 },
             };
         })
@@ -214,6 +228,201 @@ function buildTargetTagsBySlug(
         map.set(slug, new Set(tags));
     });
     return map;
+}
+
+function buildWorkingContentBySlug(targetArticles: Map<string, TargetArticle>) {
+    return Array.from(targetArticles.entries()).reduce((map, [slug, article]) => {
+        map.set(slug, article.content);
+        return map;
+    }, new Map<string, ArticleContent>());
+}
+
+function buildWorkingUpdatedAtBySlug(targetArticles: Map<string, TargetArticle>) {
+    return Array.from(targetArticles.entries()).reduce((map, [slug, article]) => {
+        map.set(slug, article.updatedAt);
+        return map;
+    }, new Map<string, string>());
+}
+
+function diffFields(
+    base: ArticleContent | undefined,
+    working: ArticleContent | undefined,
+    baseTags: Set<string>,
+    workingTags: Set<string>,
+) {
+    const fields: string[] = [];
+    if (!base && working) {
+        return ["title", "description", "body", "tags"];
+    }
+    if (base && !working) {
+        return ["deleted"];
+    }
+    if (!base || !working) return fields;
+    if (base.title !== working.title) fields.push("title");
+    if (base.description !== working.description) fields.push("description");
+    if (base.body !== working.body) fields.push("body");
+    if (base.deleted !== working.deleted) fields.push("deleted");
+    if (!tagSetsEqual(baseTags, workingTags)) fields.push("tags");
+    return fields;
+}
+
+function buildBranchChanges(
+    ArticleSnapshot: ArticleSnapshotConcept,
+    TagSnapshot: TagSnapshotConcept,
+    Article: ArticleConcept,
+    Tag: TagConcept,
+    branch: string,
+    baseCommit: string | undefined,
+): BranchChange[] {
+    const baseSnapshots = listArticleSnapshots(ArticleSnapshot, baseCommit);
+    const baseBySlug = buildSnapshotContentBySlug(baseSnapshots);
+    const baseSlugByArticle = buildSnapshotSlugByArticle(baseSnapshots);
+    const baseTagsBySlug = buildTagsBySlug(TagSnapshot, baseCommit, baseSlugByArticle);
+
+    const workingArticles = buildTargetArticles(Article, branch);
+    const workingBySlug = buildWorkingContentBySlug(workingArticles);
+    const workingUpdatedAt = buildWorkingUpdatedAtBySlug(workingArticles);
+    const workingTagsBySlug = buildTargetTagsBySlug(Tag, workingArticles);
+
+    const slugSet = new Set<string>([
+        ...Array.from(baseBySlug.keys()),
+        ...Array.from(workingBySlug.keys()),
+    ]);
+
+    const changes: BranchChange[] = [];
+
+    slugSet.forEach((slug) => {
+        const base = baseBySlug.get(slug);
+        const working = workingBySlug.get(slug);
+        const workingTags = workingTagsBySlug.get(slug) ?? new Set<string>();
+        const baseTags = baseTagsBySlug.get(slug) ?? new Set<string>();
+
+        if (!base && !working) return;
+
+        const isAdded = (!!working && !working.deleted) && (!base || base.deleted);
+        const isDeleted = !!base && !base.deleted && (!working || working.deleted);
+        const isModified = !!base && !!working &&
+            !base.deleted &&
+            !working.deleted &&
+            (!contentEquals(working, base) ||
+                !tagSetsEqual(workingTags, baseTags));
+
+        if (!isAdded && !isDeleted && !isModified) return;
+
+        const changeType: BranchChange["changeType"] = isAdded
+            ? "added"
+            : isDeleted
+            ? "deleted"
+            : "modified";
+        const title = working?.title ?? base?.title ?? slug;
+        const fieldsChanged = diffFields(base, working, baseTags, workingTags);
+        changes.push({
+            slug,
+            title,
+            changeType,
+            fieldsChanged,
+            updatedAt: workingUpdatedAt.get(slug) ?? null,
+        });
+    });
+
+    return changes;
+}
+
+function buildWorkingMergePlan(
+    ArticleSnapshot: ArticleSnapshotConcept,
+    TagSnapshot: TagSnapshotConcept,
+    Article: ArticleConcept,
+    Tag: TagConcept,
+    baseCommit: string | undefined,
+    sourceBranch: string,
+    targetBranch: string,
+): MergePlan {
+    const baseSnapshots = listArticleSnapshots(ArticleSnapshot, baseCommit);
+    const baseBySlug = buildSnapshotContentBySlug(baseSnapshots);
+    const sourceBySlug = buildWorkingContentBySlug(
+        buildTargetArticles(Article, sourceBranch),
+    );
+    const targetBySlug = buildTargetArticles(Article, targetBranch);
+
+    const baseSlugByArticle = buildSnapshotSlugByArticle(baseSnapshots);
+    const baseTagsBySlug = buildTagsBySlug(TagSnapshot, baseCommit, baseSlugByArticle);
+    const sourceTagsBySlug = buildTargetTagsBySlug(
+        Tag,
+        buildTargetArticles(Article, sourceBranch),
+    );
+    const targetTagsBySlug = buildTargetTagsBySlug(Tag, targetBySlug);
+
+    const slugSet = new Set<string>([
+        ...Array.from(baseBySlug.keys()),
+        ...Array.from(sourceBySlug.keys()),
+        ...Array.from(targetBySlug.keys()),
+    ]);
+    const conflicts = new Set<string>();
+    const creates: Array<{ slug: string } & ArticleContent> = [];
+    const updates: Array<{ id: string; content: ArticleContent }> = [];
+    const removes: Array<{ id: string }> = [];
+    const tagAdds: Array<{ slug: string; tag: string }> = [];
+    const tagRemoves: Array<{ slug: string; tag: string }> = [];
+
+    Array.from(slugSet.values()).forEach((slug) => {
+        const source = sourceBySlug.get(slug);
+        if (!source) return;
+        const base = baseBySlug.get(slug);
+        const target = targetBySlug.get(slug);
+        const targetContent = target?.content;
+        const sourceEqBase = contentEquals(source, base);
+        if (sourceEqBase) return;
+        const targetEqBase = contentEquals(targetContent, base);
+        const sourceEqTarget = contentEquals(source, targetContent);
+        if (targetEqBase) {
+            if (source.deleted) {
+                if (target) {
+                    removes.push({ id: target.id });
+                }
+                return;
+            }
+            if (target) {
+                updates.push({ id: target.id, content: source });
+            } else {
+                creates.push({ slug, ...source });
+            }
+            return;
+        }
+        if (!sourceEqTarget) {
+            conflicts.add(slug);
+        }
+    });
+
+    Array.from(sourceBySlug.keys()).forEach((slug) => {
+        const baseTags = baseTagsBySlug.get(slug) ?? new Set<string>();
+        const sourceTags = sourceTagsBySlug.get(slug) ?? new Set<string>();
+        const targetTags = targetTagsBySlug.get(slug) ?? new Set<string>();
+        const sourceEqBase = tagSetsEqual(sourceTags, baseTags);
+        if (sourceEqBase) return;
+        const targetEqBase = tagSetsEqual(targetTags, baseTags);
+        const sourceEqTarget = tagSetsEqual(sourceTags, targetTags);
+        if (targetEqBase) {
+            Array.from(sourceTags)
+                .filter((tag) => !targetTags.has(tag))
+                .forEach((tag) => tagAdds.push({ slug, tag }));
+            Array.from(targetTags)
+                .filter((tag) => !sourceTags.has(tag))
+                .forEach((tag) => tagRemoves.push({ slug, tag }));
+            return;
+        }
+        if (!sourceEqTarget) {
+            conflicts.add(slug);
+        }
+    });
+
+    return {
+        conflicts: Array.from(conflicts),
+        creates,
+        updates,
+        removes,
+        tagAdds,
+        tagRemoves,
+    };
 }
 
 function buildMergePlan(
@@ -461,20 +670,18 @@ export function makeGitlessArticleSyncs(
             [Branch.create, { branch }, { branch }],
         ),
         where: (frames: Frames) =>
-            frames
-                .query(CurrentBranch._get, { current: CURRENT_BRANCH_ID }, {
-                    branch: sourceBranch,
-                })
-                .flatMap((frame) => {
-                    const sourceId = frame[sourceBranch];
-                    if (typeof sourceId !== "string") return [];
-                    const head = Branch._getHead({ branch: sourceId })[0]?.commit;
-                    if (!head) return [];
-                    return [{
-                        ...frame,
-                        [commit]: head,
-                    }];
-                }),
+            frames.flatMap((frame) => {
+                const sourceId = Branch._getByName({ name: DEFAULT_BRANCH_NAME })[0]
+                    ?.branch;
+                if (!sourceId) return [];
+                const head = Branch._getHead({ branch: sourceId })[0]?.commit;
+                if (!head) return [];
+                return [{
+                    ...frame,
+                    [sourceBranch]: sourceId,
+                    [commit]: head,
+                }];
+            }),
         then: actions([Branch.setHead, { branch, commit }]),
     });
 
@@ -490,8 +697,14 @@ export function makeGitlessArticleSyncs(
         ),
         where: (frames: Frames) =>
             frames
-                .query(CurrentBranch._get, { current: CURRENT_BRANCH_ID }, {
-                    branch: sourceBranch,
+                .flatMap((frame) => {
+                    const sourceId = Branch._getByName({ name: DEFAULT_BRANCH_NAME })[0]
+                        ?.branch;
+                    if (!sourceId) return [];
+                    return [{
+                        ...frame,
+                        [sourceBranch]: sourceId,
+                    }];
                 })
                 .query(Article._listByBranch, { branch: sourceBranch }, {
                     article: sourceArticle,
@@ -582,6 +795,278 @@ export function makeGitlessArticleSyncs(
                 return [{
                     ...frame,
                     [output]: errorOutput("branch not found"),
+                    [code]: 404,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const ListBranches = ({ request, output, code }: Vars) => ({
+        when: actions(
+            [API.request, { method: "GET", path: "/gitless/branches" }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.map((frame) => {
+                const currentId = getCurrentBranch(CurrentBranch);
+                const branches = Branch._list({});
+                const results = branches
+                    .map((row) => Branch._get({ branch: row.branch })[0])
+                    .filter((row) =>
+                        row !== undefined && row.status !== "COMMITTED"
+                    )
+                    .map((row) => ({
+                        id: row?.branch,
+                        name: row?.name,
+                        status: row?.status,
+                        head: row?.head ?? null,
+                        isCurrent: row?.branch === currentId,
+                    }));
+                return {
+                    ...frame,
+                    [output]: { branches: results },
+                    [code]: 200,
+                };
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const GetCurrentBranch = ({ request, output, code }: Vars) => ({
+        when: actions(
+            [API.request, { method: "GET", path: "/gitless/branches/current" }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const currentId = getCurrentBranch(CurrentBranch);
+                if (!currentId) return [];
+                const row = Branch._get({ branch: currentId })[0];
+                if (!row) return [];
+                return [{
+                    ...frame,
+                    [output]: {
+                        branch: {
+                            id: row.branch,
+                            name: row.name,
+                            status: row.status,
+                            head: row.head ?? null,
+                        },
+                    },
+                    [code]: 200,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const GetCurrentBranchMissing = ({ request, output, code }: Vars) => ({
+        when: actions(
+            [API.request, { method: "GET", path: "/gitless/branches/current" }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const currentId = getCurrentBranch(CurrentBranch);
+                if (currentId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("current branch not set"),
+                    [code]: 404,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const BranchChanges = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "GET",
+                path: "/gitless/branches/:name/changes",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                if (!nameValue) return [];
+                const branchId = Branch._getByName({ name: nameValue })[0]?.branch;
+                if (!branchId) return [];
+                const row = Branch._get({ branch: branchId })[0];
+                if (!row) return [];
+                const changes = buildBranchChanges(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    branchId,
+                    row.head,
+                );
+                return [{
+                    ...frame,
+                    [output]: {
+                        branch: {
+                            id: row.branch,
+                            name: row.name,
+                            status: row.status,
+                            head: row.head ?? null,
+                        },
+                        baseCommit: row.head ?? null,
+                        changes,
+                    },
+                    [code]: 200,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const BranchChangesMissing = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "GET",
+                path: "/gitless/branches/:name/changes",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                if (nameValue) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("name required"),
+                    [code]: 422,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const BranchChangesNotFound = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "GET",
+                path: "/gitless/branches/:name/changes",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                if (!nameValue) return [];
+                const branchId = Branch._getByName({ name: nameValue })[0]?.branch;
+                if (branchId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("branch not found"),
+                    [code]: 404,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const ArticleHistory = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "GET",
+                path: "/articles/:slug/history",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const slugValue = getString(payloadValue, "slug");
+                if (!slugValue) return [];
+                const mainId = Branch._getByName({ name: DEFAULT_BRANCH_NAME })[0]
+                    ?.branch;
+                if (!mainId) return [];
+                const articleId = Article._getBySlug({ branch: mainId, slug: slugValue })[0]
+                    ?.article;
+                if (!articleId) return [];
+                const limitValue = getOptionalString(payloadValue, "limit");
+                const limit = limitValue ? Number.parseInt(limitValue, 10) : undefined;
+                const commits = Commit._listByBranch({ branch: mainId })
+                    .map((row) => Commit._get({ commit: row.commit })[0])
+                    .filter((row): row is NonNullable<typeof row> => row !== undefined)
+                    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+                const history = commits.filter((commit) => {
+                    const snapshots = ArticleSnapshot._listByCommit({
+                        commit: commit.commit,
+                    });
+                    return snapshots.some((snapshot) => {
+                        const row = ArticleSnapshot._get({ snapshot: snapshot.snapshot })[0];
+                        return row?.article === articleId;
+                    });
+                }).map((commit) => ({
+                    commit: commit.commit,
+                    message: commit.message,
+                    createdAt: commit.createdAt,
+                }));
+
+                const limited = typeof limit === "number" && Number.isFinite(limit)
+                    ? history.slice(0, Math.max(0, limit))
+                    : history;
+
+                return [{
+                    ...frame,
+                    [output]: { history: limited },
+                    [code]: 200,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const ArticleHistoryMissing = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "GET",
+                path: "/articles/:slug/history",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const slugValue = getString(payloadValue, "slug");
+                if (slugValue) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("slug required"),
+                    [code]: 422,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const ArticleHistoryNotFound = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "GET",
+                path: "/articles/:slug/history",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const slugValue = getString(payloadValue, "slug");
+                if (!slugValue) return [];
+                const mainId = Branch._getByName({ name: DEFAULT_BRANCH_NAME })[0]
+                    ?.branch;
+                if (!mainId) return [{
+                    ...frame,
+                    [output]: errorOutput("main branch not set"),
+                    [code]: 409,
+                }];
+                const articleId = Article._getBySlug({ branch: mainId, slug: slugValue })[0]
+                    ?.article;
+                if (articleId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("article not found"),
                     [code]: 404,
                 }];
             }),
@@ -989,6 +1474,7 @@ export function makeGitlessArticleSyncs(
         commit,
         parents,
         message,
+        sourceBranch,
     }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/gitless/merges", input }, {
@@ -1005,11 +1491,11 @@ export function makeGitlessArticleSyncs(
                 const mergeMessage = trimmed.length > 0 ? trimmed : `merge ${nameValue}`;
                 const targetBranch = getCurrentBranch(CurrentBranch);
                 if (!targetBranch) return [];
-                const sourceBranch = Branch._getByName({ name: nameValue })[0]?.branch;
-                if (!sourceBranch) return [];
+                const sourceId = Branch._getByName({ name: nameValue })[0]?.branch;
+                if (!sourceId) return [];
                 if (hasConflict(Article, targetBranch)) return [];
                 const targetHead = Branch._getHead({ branch: targetBranch })[0]?.commit;
-                const sourceHead = Branch._getHead({ branch: sourceBranch })[0]?.commit;
+                const sourceHead = Branch._getHead({ branch: sourceId })[0]?.commit;
                 if (!targetHead || !sourceHead) return [];
                 const plan = buildMergePlan(
                     Commit,
@@ -1025,12 +1511,16 @@ export function makeGitlessArticleSyncs(
                 return [{
                     ...frame,
                     [branch]: targetBranch,
+                    [sourceBranch]: sourceId,
                     [commit]: crypto.randomUUID(),
                     [parents]: [targetHead, sourceHead],
                     [message]: mergeMessage,
                 }];
             }),
-        then: actions([Commit.create, { commit, branch, parents, message }]),
+        then: actions(
+            [Commit.create, { commit, branch, parents, message }],
+            [Branch.setStatus, { branch: sourceBranch, status: "COMMITTED" }],
+        ),
     });
 
     const MergeResponse = ({ request, input, commit, output, code }: Vars) => ({
@@ -1121,7 +1611,82 @@ export function makeGitlessArticleSyncs(
         then: actions([API.response, { request, output, code }]),
     });
 
-    const CommitWithParent = ({
+    const CommitMergeConflict = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId) return [{
+                    ...frame,
+                    [output]: errorOutput("main branch not set"),
+                    [code]: 409,
+                }];
+                if (branchId === mainId) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length === 0) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("merge conflicts not supported"),
+                    [code]: 409,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const CommitMergeNoChanges = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId) return [];
+                if (branchId === mainId) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const changes = buildBranchChanges(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    branchId,
+                    baseCommit,
+                );
+                if (changes.length > 0) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("no changes to commit"),
+                    [code]: 409,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const CommitOnMainWithParent = ({
         request,
         input,
         branch,
@@ -1141,6 +1706,8 @@ export function makeGitlessArticleSyncs(
                 if (!messageValue) return [];
                 const branchId = getCurrentBranch(CurrentBranch);
                 if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId !== mainId) return [];
                 if (hasConflict(Article, branchId)) return [];
                 const parentId = Branch._getHead({ branch: branchId })[0]?.commit;
                 if (!parentId) return [];
@@ -1155,7 +1722,7 @@ export function makeGitlessArticleSyncs(
         then: actions([Commit.create, { commit, branch, parents, message }]),
     });
 
-    const CommitWithoutParent = ({
+    const CommitOnMainWithoutParent = ({
         request,
         input,
         branch,
@@ -1175,6 +1742,8 @@ export function makeGitlessArticleSyncs(
                 if (!messageValue) return [];
                 const branchId = getCurrentBranch(CurrentBranch);
                 if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId !== mainId) return [];
                 if (hasConflict(Article, branchId)) return [];
                 const parentId = Branch._getHead({ branch: branchId })[0]?.commit;
                 if (parentId) return [];
@@ -1187,6 +1756,295 @@ export function makeGitlessArticleSyncs(
                 }];
             }),
         then: actions([Commit.create, { commit, branch, parents, message }]),
+    });
+
+    const CommitMergeApplyCreates = ({
+        request,
+        input,
+        branch,
+        article,
+        slug,
+        title,
+        description,
+        body,
+        author,
+    }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId === mainId) return [];
+                if (hasConflict(Article, branchId)) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length > 0 || plan.creates.length === 0) return [];
+                return plan.creates.map((create) => ({
+                    ...frame,
+                    [branch]: mainId,
+                    [article]: crypto.randomUUID(),
+                    [slug]: create.slug,
+                    [title]: create.title,
+                    [description]: create.description,
+                    [body]: create.body,
+                    [author]: create.author,
+                }));
+            }),
+        then: actions([Article.create, { article, branch, slug, title, description, body, author }]),
+    });
+
+    const CommitMergeApplyUpdates = ({
+        request,
+        input,
+        article,
+        title,
+        description,
+        body,
+    }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId === mainId) return [];
+                if (hasConflict(Article, branchId)) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length > 0 || plan.updates.length === 0) return [];
+                return plan.updates.map((update) => ({
+                    ...frame,
+                    [article]: update.id,
+                    [title]: update.content.title,
+                    [description]: update.content.description,
+                    [body]: update.content.body,
+                }));
+            }),
+        then: actions([Article.update, { article, title, description, body }]),
+    });
+
+    const CommitMergeApplyRemoves = ({ request, input, article }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId === mainId) return [];
+                if (hasConflict(Article, branchId)) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length > 0 || plan.removes.length === 0) return [];
+                return plan.removes.map((remove) => ({
+                    ...frame,
+                    [article]: remove.id,
+                }));
+            }),
+        then: actions([Article.remove, { article }]),
+    });
+
+    const CommitMergeApplyTagAdds = ({ request, input, article, tag, slug }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId === mainId) return [];
+                if (hasConflict(Article, branchId)) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length > 0 || plan.tagAdds.length === 0) return [];
+                return plan.tagAdds.flatMap((add) => {
+                    const targetArticle = Article._getBySlug({
+                        branch: mainId,
+                        slug: add.slug,
+                    })[0]?.article;
+                    if (!targetArticle) return [];
+                    return [{
+                        ...frame,
+                        [article]: targetArticle,
+                        [tag]: add.tag,
+                        [slug]: add.slug,
+                    }];
+                });
+            }),
+        then: actions([Tag.add, { target: article, tag }]),
+    });
+
+    const CommitMergeApplyTagRemoves = ({
+        request,
+        input,
+        article,
+        tag,
+        slug,
+    }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId === mainId) return [];
+                if (hasConflict(Article, branchId)) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length > 0 || plan.tagRemoves.length === 0) return [];
+                return plan.tagRemoves.flatMap((remove) => {
+                    const targetArticle = Article._getBySlug({
+                        branch: mainId,
+                        slug: remove.slug,
+                    })[0]?.article;
+                    if (!targetArticle) return [];
+                    return [{
+                        ...frame,
+                        [article]: targetArticle,
+                        [tag]: remove.tag,
+                        [slug]: remove.slug,
+                    }];
+                });
+            }),
+        then: actions([Tag.remove, { target: article, tag }]),
+    });
+
+    const CommitMergeCommit = ({
+        request,
+        input,
+        branch,
+        commit,
+        parents,
+        message,
+        sourceBranch,
+    }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/gitless/commits", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const messageValue = getString(payloadValue, "message");
+                if (!messageValue) return [];
+                const branchId = getCurrentBranch(CurrentBranch);
+                if (!branchId) return [];
+                const mainId = getMainBranchId(Branch);
+                if (!mainId || branchId === mainId) return [];
+                if (hasConflict(Article, branchId)) return [];
+                const baseCommit = Branch._getHead({ branch: branchId })[0]?.commit;
+                const plan = buildWorkingMergePlan(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    baseCommit,
+                    branchId,
+                    mainId,
+                );
+                if (plan.conflicts.length > 0) return [];
+                const changes = buildBranchChanges(
+                    ArticleSnapshot,
+                    TagSnapshot,
+                    Article,
+                    Tag,
+                    branchId,
+                    baseCommit,
+                );
+                if (changes.length === 0) return [];
+                const mainHead = Branch._getHead({ branch: mainId })[0]?.commit;
+                const parentList = [mainHead, baseCommit].filter(
+                    (parent, index, array) =>
+                        !!parent && array.indexOf(parent) === index,
+                ) as string[];
+                return [{
+                    ...frame,
+                    [branch]: mainId,
+                    [sourceBranch]: branchId,
+                    [commit]: crypto.randomUUID(),
+                    [parents]: parentList,
+                    [message]: messageValue,
+                }];
+            }),
+        then: actions(
+            [Commit.create, { commit, branch, parents, message }],
+            [Branch.setStatus, { branch: sourceBranch, status: "COMMITTED" }],
+        ),
     });
 
     const CommitResponse = ({ request, commit, output, code }: Vars) => ({
@@ -1279,6 +2137,15 @@ export function makeGitlessArticleSyncs(
         SwitchBranch,
         SwitchBranchMissing,
         SwitchBranchNotFound,
+        ListBranches,
+        GetCurrentBranch,
+        GetCurrentBranchMissing,
+        BranchChanges,
+        BranchChangesMissing,
+        BranchChangesNotFound,
+        ArticleHistory,
+        ArticleHistoryMissing,
+        ArticleHistoryNotFound,
         MergeMissingName,
         MergeNoCurrentBranch,
         MergeSourceNotFound,
@@ -1295,8 +2162,16 @@ export function makeGitlessArticleSyncs(
         CommitMissingMessage,
         CommitNoCurrentBranch,
         CommitConflict,
-        CommitWithParent,
-        CommitWithoutParent,
+        CommitMergeConflict,
+        CommitMergeNoChanges,
+        CommitOnMainWithParent,
+        CommitOnMainWithoutParent,
+        CommitMergeApplyCreates,
+        CommitMergeApplyUpdates,
+        CommitMergeApplyRemoves,
+        CommitMergeApplyTagAdds,
+        CommitMergeApplyTagRemoves,
+        CommitMergeCommit,
         CommitResponse,
         AdvanceBranchHead,
         CaptureArticleSnapshots,

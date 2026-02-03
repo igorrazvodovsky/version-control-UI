@@ -9,6 +9,7 @@ state
     a set of Branches with
         a name String
         an optional head Commits
+        a status String
         a createdAt DateTime
 
 actions
@@ -24,8 +25,14 @@ actions
     setHead (branch: Branches, commit: Commits) : (error: String)
         if branch does not exist, return error
 
+    setStatus (branch: Branches, status: String) : (branch: Branches)
+        update branch status
+        return branch
+    setStatus (branch: Branches, status: String) : (error: String)
+        if branch does not exist, return error
+
 queries
-    _get (branch: Branches) : (branch: Branches, name: String, head: Commits)
+    _get (branch: Branches) : (branch: Branches, name: String, head: Commits, status: String)
         fetch branch
     _getByName (name: String) : (branch: Branches)
         lookup branch by name
