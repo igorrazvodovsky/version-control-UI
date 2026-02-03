@@ -18,6 +18,10 @@ type ArticlesResponse = {
   articlesCount: number;
 };
 
+type BranchChangesResponse = {
+  changes?: unknown[];
+};
+
 type ApiError = {
   errors?: { body?: string[] };
   error?: string;
@@ -198,11 +202,49 @@ async function seedArticles() {
   console.log(`Seed complete: ${created} created, ${skipped} skipped.`);
 }
 
+async function ensureSeedCommit() {
+  const { response, data } = await requestJson("/gitless/branches/main/changes", {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const messages = getErrorMessages(data as ApiError);
+    throw new Error(
+      `Failed to load branch changes: ${messages.join(", ") || response.statusText}`,
+    );
+  }
+
+  const payload = data as BranchChangesResponse | null;
+  const changes = Array.isArray(payload?.changes) ? payload.changes : [];
+  if (changes.length === 0) {
+    console.log("No gitless changes to commit.");
+    return;
+  }
+
+  const { response: commitResponse, data: commitData } = await requestJson(
+    "/gitless/commits",
+    {
+      method: "POST",
+      body: JSON.stringify({ message: "seed" }),
+    },
+  );
+
+  if (!commitResponse.ok) {
+    const messages = getErrorMessages(commitData as ApiError);
+    throw new Error(
+      `Failed to create seed commit: ${messages.join(", ") || commitResponse.statusText}`,
+    );
+  }
+
+  console.log(`Created gitless commit for ${changes.length} change(s).`);
+}
+
 async function main() {
   console.log(`Seeding RealWorld articles via ${API_BASE_URL}`);
   await ensureGitlessInit();
   await ensureUsers();
   await seedArticles();
+  await ensureSeedCommit();
 }
 
 if (import.meta.main) {
