@@ -7,9 +7,11 @@ Deno.test("commit operational principle", () => {
         commit: "c1",
         branch: "b1",
         message: "init",
+        parents: [],
     });
     assertEqual("commit" in create, true);
     const result = commits._get({ commit: "c1" });
     assertEqual(result.length, 1);
     assertEqual(result[0].message, "init");
+    assertEqual(result[0].parents.length, 0);
 });

@@ -8,30 +8,25 @@ purpose
 state
     a set of Commits with
         a branch Branches
-        an optional parent Commits
+        a parents set of Commits
         a message String
         a createdAt DateTime
 
 actions
-    create (commit: Commits, branch: Branches, parent: Commits, message: String) : (commit: Commits)
-        add commit with parent
+    create (commit: Commits, branch: Branches, parents: set of Commits, message: String) : (commit: Commits)
+        add commit with parents
         return commit
-    create (commit: Commits, branch: Branches, message: String) : (commit: Commits)
-        add commit without parent
-        return commit
-    create (commit: Commits, branch: Branches, parent: Commits, message: String) : (error: String)
-        if commit already exists, return error
-    create (commit: Commits, branch: Branches, message: String) : (error: String)
+    create (commit: Commits, branch: Branches, parents: set of Commits, message: String) : (error: String)
         if commit already exists, return error
 
 queries
-    _get (commit: Commits) : (commit: Commits, branch: Branches, parent: Commits, message: String, createdAt: DateTime)
+    _get (commit: Commits) : (commit: Commits, branch: Branches, parents: set of Commits, message: String, createdAt: DateTime)
         fetch commit
     _listByBranch (branch: Branches) : (commit: Commits)
         list commits for branch
 
 operational principle
-    after create (commit: c1, branch: b1, message: "init") : (commit: c1)
+    after create (commit: c1, branch: b1, parents: [], message: "init") : (commit: c1)
     then _get (commit: c1) shows message "init"
 
 </concept_spec>

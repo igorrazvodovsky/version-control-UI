@@ -3,7 +3,7 @@ export class CommitConcept {
         string,
         {
             branch: string;
-            parent?: string;
+            parents: string[];
             message: string;
             createdAt: string;
         }
@@ -13,12 +13,12 @@ export class CommitConcept {
         commit,
         branch,
         message,
-        parent,
+        parents,
     }: {
         commit: string;
         branch: string;
         message: string;
-        parent?: string;
+        parents: string[];
     }) {
         if (this.commits.has(commit)) {
             return { error: "commit already exists" };
@@ -26,7 +26,7 @@ export class CommitConcept {
         const now = new Date().toISOString();
         this.commits.set(commit, {
             branch,
-            parent,
+            parents: [...parents],
             message,
             createdAt: now,
         });
@@ -36,7 +36,7 @@ export class CommitConcept {
     _get({ commit }: { commit: string }): {
         commit: string;
         branch: string;
-        parent: string | undefined;
+        parents: string[];
         message: string;
         createdAt: string;
     }[] {
@@ -45,7 +45,7 @@ export class CommitConcept {
         return [{
             commit,
             branch: existing.branch,
-            parent: existing.parent,
+            parents: [...existing.parents],
             message: existing.message,
             createdAt: existing.createdAt,
         }];

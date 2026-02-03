@@ -139,3 +139,223 @@ Deno.test("gitless: branch switching and commit capture", async () => {
     assert(mainRow);
     assertEqual(mainRow.body, "Body");
 });
+
+Deno.test("gitless: clean merge creates merge commit", async () => {
+    const { API, Branch, Commit, Article, Tag } = setup();
+
+    await API.request({
+        request: "m1",
+        method: "POST",
+        path: "/gitless/init",
+        input: {},
+    });
+
+    const mainBranchId = Branch._getByName({ name: "main" })[0]?.branch;
+    assert(mainBranchId);
+
+    await Article.create({
+        article: "a1",
+        branch: mainBranchId,
+        slug: "hello",
+        title: "Hello",
+        description: "Desc",
+        body: "Body",
+        author: "u1",
+    });
+    await Article.track({ article: "a1" });
+    await Tag.add({ target: "a1", tag: "base" });
+
+    await API.request({
+        request: "m2",
+        method: "POST",
+        path: "/gitless/commits",
+        input: { message: "init" },
+    });
+
+    const mainHead = Branch._getHead({ branch: mainBranchId })[0]?.commit;
+    assert(mainHead);
+
+    await API.request({
+        request: "m3",
+        method: "POST",
+        path: "/gitless/branches",
+        input: { name: "feat" },
+    });
+
+    const featBranchId = Branch._getByName({ name: "feat" })[0]?.branch;
+    assert(featBranchId);
+
+    await API.request({
+        request: "m4",
+        method: "PUT",
+        path: "/gitless/branches/current",
+        input: { name: "feat" },
+    });
+
+    const featArticleId = Article._getBySlug({
+        branch: featBranchId,
+        slug: "hello",
+    })[0]?.article;
+    assert(featArticleId);
+
+    await Article.update({
+        article: featArticleId,
+        title: "Hello",
+        description: "Desc",
+        body: "Body feat",
+    });
+    await Tag.add({ target: featArticleId, tag: "feat" });
+
+    await API.request({
+        request: "m5",
+        method: "POST",
+        path: "/gitless/commits",
+        input: { message: "feat" },
+    });
+
+    const featHead = Branch._getHead({ branch: featBranchId })[0]?.commit;
+    assert(featHead);
+
+    await API.request({
+        request: "m6",
+        method: "PUT",
+        path: "/gitless/branches/current",
+        input: { name: "main" },
+    });
+
+    await API.request({
+        request: "m7",
+        method: "POST",
+        path: "/gitless/merges",
+        input: { name: "feat" },
+    });
+
+    const mergeHead = Branch._getHead({ branch: mainBranchId })[0]?.commit;
+    assert(mergeHead);
+    const mergeRow = Commit._get({ commit: mergeHead })[0];
+    assert(mergeRow);
+    assertEqual(mergeRow.parents.includes(mainHead), true);
+    assertEqual(mergeRow.parents.includes(featHead), true);
+
+    const mainArticleId = Article._getBySlug({
+        branch: mainBranchId,
+        slug: "hello",
+    })[0]?.article;
+    assert(mainArticleId);
+    const mainRow = Article._get({ article: mainArticleId })[0];
+    assert(mainRow);
+    assertEqual(mainRow.body, "Body feat");
+    const mainTags = Tag._getByTarget({ target: mainArticleId }).map((row) =>
+        row.tag
+    );
+    assertEqual(mainTags.includes("feat"), true);
+});
+
+Deno.test("gitless: merge conflicts return error", async () => {
+    const { API, Branch, Article } = setup();
+
+    await API.request({
+        request: "c1",
+        method: "POST",
+        path: "/gitless/init",
+        input: {},
+    });
+
+    const mainBranchId = Branch._getByName({ name: "main" })[0]?.branch;
+    assert(mainBranchId);
+
+    await Article.create({
+        article: "a1",
+        branch: mainBranchId,
+        slug: "hello",
+        title: "Hello",
+        description: "Desc",
+        body: "Body",
+        author: "u1",
+    });
+    await Article.track({ article: "a1" });
+
+    await API.request({
+        request: "c2",
+        method: "POST",
+        path: "/gitless/commits",
+        input: { message: "init" },
+    });
+
+    const baseHead = Branch._getHead({ branch: mainBranchId })[0]?.commit;
+    assert(baseHead);
+
+    await API.request({
+        request: "c3",
+        method: "POST",
+        path: "/gitless/branches",
+        input: { name: "feat" },
+    });
+
+    const featBranchId = Branch._getByName({ name: "feat" })[0]?.branch;
+    assert(featBranchId);
+
+    await API.request({
+        request: "c4",
+        method: "PUT",
+        path: "/gitless/branches/current",
+        input: { name: "feat" },
+    });
+
+    const featArticleId = Article._getBySlug({
+        branch: featBranchId,
+        slug: "hello",
+    })[0]?.article;
+    assert(featArticleId);
+    await Article.update({
+        article: featArticleId,
+        title: "Hello",
+        description: "Desc",
+        body: "Body feat",
+    });
+
+    await API.request({
+        request: "c5",
+        method: "POST",
+        path: "/gitless/commits",
+        input: { message: "feat" },
+    });
+
+    await API.request({
+        request: "c6",
+        method: "PUT",
+        path: "/gitless/branches/current",
+        input: { name: "main" },
+    });
+
+    const mainArticleId = Article._getBySlug({
+        branch: mainBranchId,
+        slug: "hello",
+    })[0]?.article;
+    assert(mainArticleId);
+    await Article.update({
+        article: mainArticleId,
+        title: "Hello",
+        description: "Desc",
+        body: "Body main",
+    });
+
+    await API.request({
+        request: "c7",
+        method: "POST",
+        path: "/gitless/merges",
+        input: { name: "feat" },
+    });
+
+    const response = API._get({ request: "c7" })[0];
+    assert(response);
+    assertEqual(response.code, 409);
+    const output = response.output as { error?: string };
+    assertEqual(output.error, "merge conflicts not supported");
+
+    const mainRow = Article._get({ article: mainArticleId })[0];
+    assert(mainRow);
+    assertEqual(mainRow.body, "Body main");
+    const headAfter = Branch._getHead({ branch: mainBranchId })[0]?.commit;
+    assertEqual(headAfter, baseHead);
+});
