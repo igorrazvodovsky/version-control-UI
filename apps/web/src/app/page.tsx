@@ -303,7 +303,7 @@ export default function DualSidebarPage() {
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <header className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+          <header className="flex items-center justify-between border-border bg-background px-4 py-3">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
             </div>
@@ -409,7 +409,7 @@ export default function DualSidebarPage() {
         )}
       >
         <div className={cn("flex h-full flex-col", !rightSidebarOpen && "hidden")}>
-          <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-3">
+          <div className="flex items-center justify-between border-sidebar-border px-4 py-3">
             <h2 className="font-semibold text-sidebar-foreground">Details</h2>
             <Button
               variant="ghost"
