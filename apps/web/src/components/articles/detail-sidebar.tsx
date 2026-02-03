@@ -25,31 +25,10 @@ export default function ArticleDetailSidebar() {
 
   return (
     <>
-      <div>
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-sidebar-foreground">
-          <Info className="h-4 w-4" />
-          Metadata
-        </h3>
-        <div className="space-y-2 rounded-lg bg-sidebar-accent p-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Status</span>
-            <span className="font-medium text-sidebar-foreground">Active</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Created</span>
-            <span className="font-medium text-sidebar-foreground">Oct 28, 2025</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Modified</span>
-            <span className="font-medium text-sidebar-foreground">2 hours ago</span>
-          </div>
-        </div>
-      </div>
-
       <Tabs defaultValue="branch">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="branch">Branch & History</TabsTrigger>
-          <TabsTrigger value="actions">Quick Actions</TabsTrigger>
+          <TabsTrigger value="actions">Details</TabsTrigger>
+          <TabsTrigger value="branch">History</TabsTrigger>
         </TabsList>
         <TabsContent value="branch" className="mt-4 space-y-5">
           <div className="space-y-3">
@@ -147,6 +126,26 @@ export default function ArticleDetailSidebar() {
           </div>
         </TabsContent>
         <TabsContent value="actions" className="mt-4 space-y-2">
+          <div>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-sidebar-foreground">
+              <Info className="h-4 w-4" />
+              Metadata
+            </h3>
+            <div className="space-y-2 rounded-lg bg-sidebar-accent p-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Status</span>
+                <span className="font-medium text-sidebar-foreground">Active</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Created</span>
+                <span className="font-medium text-sidebar-foreground">Oct 28, 2025</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Modified</span>
+                <span className="font-medium text-sidebar-foreground">2 hours ago</span>
+              </div>
+            </div>
+          </div>
           <div className="space-y-2">
             <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
               Export Data

@@ -28,7 +28,7 @@ export default function HomeRightSidebar() {
       <div>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-sidebar-foreground">
           <Tag className="h-4 w-4" />
-          Quick Actions
+          Actions
         </h3>
         <div className="space-y-2">
           <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">

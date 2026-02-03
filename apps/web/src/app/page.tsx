@@ -1,27 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
-import { ArticleDetailProvider } from "@/components/articles/detail-provider"
+import { ArticlesTableState } from "@/components/articles/articles-table-state"
 import { Button } from "@/components/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandShortcut,
-} from "@/components/ui/command"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Sidebar,
   SidebarContent,
@@ -38,41 +19,60 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
-  Bell,
-  Calculator,
-  Calendar,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
   ChevronLeft,
   ChevronRight,
+  Home,
+  FileText,
+  Settings,
+  Users,
+  BarChart,
+  Clock,
+  Tag,
+  Info,
   ChevronsUpDown,
-  CreditCard,
+  Plus,
+  Inbox,
+  Calendar,
+  Search,
+  Bell,
   HelpCircle,
   LogOut,
-  Plus,
-  Search,
-  Settings,
-  Smile,
   User,
+  Calculator,
+  CreditCard,
+  Smile,
 } from "lucide-react"
+import { useArticles } from "@/hooks/use-articles"
 import { cn } from "@/lib/utils"
-import { navGroups, workspaceOptions } from "@/components/shell/nav"
 
-type AppShellProps = {
-  children: React.ReactNode
-  rightSidebar?: React.ReactNode
-}
+const WORKSPACES = ["Acme Corp", "Personal", "Team Project"]
 
-export default function AppShell({ children, rightSidebar }: AppShellProps) {
-  const params = useParams()
-  const slugParam = params?.slug
-  const slug = Array.isArray(slugParam) ? slugParam[0] ?? "" : slugParam ?? ""
+export default function DualSidebarPage() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
-  const [activeWorkspace, setActiveWorkspace] = useState(workspaceOptions[0] ?? "Workspace")
+  const [activeWorkspace, setActiveWorkspace] = useState(WORKSPACES[0])
   const [commandOpen, setCommandOpen] = useState(false)
-  const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined
-  const shouldProvideArticle = typeof slug === "string" && slug.length > 0
+  const { articles, error, loading, apiBaseUrl } = useArticles()
 
-  const shell = (
+  return (
     <div className="flex h-screen bg-background">
       <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
         <Sidebar side="left" collapsible="icon">
@@ -97,7 +97,7 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56" align="start">
                     <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
-                    {workspaceOptions.map((workspace) => (
+                    {WORKSPACES.map((workspace) => (
                       <DropdownMenuItem
                         key={workspace}
                         onClick={() => setActiveWorkspace(workspace)}
@@ -123,23 +123,69 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
           </SidebarHeader>
 
           <SidebarContent>
-            {navGroups.map((group) => (
-              <SidebarGroup key={group.label}>
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => (
-                      <SidebarMenuItem key={item.label}>
-                        <SidebarMenuButton isActive={item.isActive} tooltip={item.tooltip ?? item.label}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ))}
+            <SidebarGroup>
+              <SidebarGroupLabel>Platform</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton isActive tooltip="Dashboard">
+                      <Home />
+                      <span>Dashboard</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Inbox">
+                      <Inbox />
+                      <span>Inbox</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Calendar">
+                      <Calendar />
+                      <span>Calendar</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Search">
+                      <Search />
+                      <span>Search</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Documents">
+                      <FileText />
+                      <span>Documents</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Analytics">
+                      <BarChart />
+                      <span>Analytics</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Team">
+                      <Users />
+                      <span>Team</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Settings">
+                      <Settings />
+                      <span>Settings</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter>
@@ -208,7 +254,9 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
           <SidebarRail />
         </Sidebar>
 
+        {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Header */}
           <header className="flex items-center justify-between border-border bg-background px-4 py-3">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
@@ -273,7 +321,7 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              {hasRightSidebar && !rightSidebarOpen && (
+              {!rightSidebarOpen && (
                 <Button variant="ghost" size="icon" onClick={() => setRightSidebarOpen(true)} className="h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
                   <span className="sr-only">Expand sidebar</span>
@@ -282,40 +330,102 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto p-6">
+            <ArticlesTableState articles={articles} error={error} loading={loading} apiBaseUrl={apiBaseUrl} />
+          </main>
         </div>
       </SidebarProvider>
 
-      {hasRightSidebar && (
-        <aside
-          className={cn(
-            "border-l border-border bg-sidebar transition-all duration-300 ease-in-out",
-            rightSidebarOpen ? "w-80" : "w-0",
-          )}
-        >
-          <div className={cn("flex h-full flex-col", !rightSidebarOpen && "hidden")}>
-            <div className="flex items-center justify-end border-sidebar-border px-4 pt-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setRightSidebarOpen(false)}
-                className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Collapse details</span>
-              </Button>
+      {/* Right Sidebar - Metadata & Actions */}
+      <aside
+        className={cn(
+          "border-l border-border bg-sidebar transition-all duration-300 ease-in-out",
+          rightSidebarOpen ? "w-80" : "w-0",
+        )}
+      >
+        <div className={cn("flex h-full flex-col", !rightSidebarOpen && "hidden")}>
+          <div className="flex items-center justify-between border-sidebar-border px-4 py-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setRightSidebarOpen(false)}
+              className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+            >
+              <ChevronRight className="h-4 w-4" />
+              <span className="sr-only">Collapse details</span>
+            </Button>
+          </div>
+
+          <div className="flex-1 space-y-6 overflow-auto p-4">
+            {/* Metadata Section */}
+            <div>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-sidebar-foreground">
+                <Info className="h-4 w-4" />
+                Metadata
+              </h3>
+              <div className="space-y-2 rounded-lg bg-sidebar-accent p-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="font-medium text-sidebar-foreground">Active</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Created</span>
+                  <span className="font-medium text-sidebar-foreground">Oct 28, 2025</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Modified</span>
+                  <span className="font-medium text-sidebar-foreground">2 hours ago</span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-auto p-4">{rightSidebar}</div>
+            {/* Actions Section */}
+            <div>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-sidebar-foreground">
+                <Tag className="h-4 w-4" />
+                Actions
+              </h3>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
+                  Export Data
+                </Button>
+                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
+                  Share Link
+                </Button>
+                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
+                  Duplicate
+                </Button>
+                <Button variant="outline" className="w-full justify-start bg-transparent text-destructive" size="sm">
+                  Delete
+                </Button>
+              </div>
+            </div>
+
+            {/* History Section */}
+            <div>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-sidebar-foreground">
+                <Clock className="h-4 w-4" />
+                Recent History
+              </h3>
+              <div className="space-y-3">
+                <div className="rounded-lg bg-sidebar-accent p-3">
+                  <p className="text-sm font-medium text-sidebar-foreground">Page updated</p>
+                  <p className="text-xs text-muted-foreground">2 hours ago</p>
+                </div>
+                <div className="rounded-lg bg-sidebar-accent p-3">
+                  <p className="text-sm font-medium text-sidebar-foreground">Settings changed</p>
+                  <p className="text-xs text-muted-foreground">5 hours ago</p>
+                </div>
+                <div className="rounded-lg bg-sidebar-accent p-3">
+                  <p className="text-sm font-medium text-sidebar-foreground">New user added</p>
+                  <p className="text-xs text-muted-foreground">Yesterday</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </aside>
-      )}
+        </div>
+      </aside>
     </div>
   )
-
-  if (!shouldProvideArticle) {
-    return shell
-  }
-
-  return <ArticleDetailProvider slug={slug}>{shell}</ArticleDetailProvider>
 }
