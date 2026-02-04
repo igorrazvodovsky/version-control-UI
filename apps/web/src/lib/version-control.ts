@@ -15,7 +15,7 @@ export type VersionControlBranch = {
 export type BranchChange = {
   slug: string;
   title: string;
-  changeType: "added" | "modified" | "deleted";
+  changeType: "A" | "M" | "D";
   fieldsChanged: string[];
   updatedAt: string | null;
 };

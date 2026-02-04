@@ -34,7 +34,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import {
@@ -75,7 +74,7 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
   const shell = (
     <div className="flex h-screen bg-background">
       <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
-        <Sidebar side="left" collapsible="icon">
+        <Sidebar side="left" collapsible="offcanvas">
           <SidebarHeader>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -205,7 +204,6 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
             </SidebarMenu>
           </SidebarFooter>
 
-          <SidebarRail />
         </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -273,10 +271,15 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              {hasRightSidebar && !rightSidebarOpen && (
-                <Button variant="ghost" size="icon" onClick={() => setRightSidebarOpen(true)} className="h-8 w-8">
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Expand sidebar</span>
+              {hasRightSidebar && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setRightSidebarOpen((open) => !open)}
+                  className="h-8 w-8"
+                >
+                  {rightSidebarOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  <span className="sr-only">{rightSidebarOpen ? "Collapse details" : "Expand details"}</span>
                 </Button>
               )}
             </div>
@@ -294,18 +297,6 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
           )}
         >
           <div className={cn("flex h-full flex-col", !rightSidebarOpen && "hidden")}>
-            <div className="flex items-center justify-end border-sidebar-border px-4 pt-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setRightSidebarOpen(false)}
-                className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Collapse details</span>
-              </Button>
-            </div>
-
             <div className="flex-1 space-y-6 overflow-auto p-4">{rightSidebar}</div>
           </div>
         </aside>

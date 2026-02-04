@@ -60,6 +60,21 @@ Synchronizations should:
   variable on the frame, and have simple usage of these declared variables in
   the output parameters.
 
+## Always apply: Project map
+
+- Backend entry: `app.ts` wires concepts + syncs; `server.ts` exposes HTTP routes
+  via Oak.
+- Concepts live in `concepts/` with specs in `specs/` and tests in
+  `concepts/test/`.
+- Syncs are split by domain: `syncs/app` for user/profile/article/comment/
+  favorite/tag; `syncs/version_control` for branch/commit/history.
+- Frontend is Next.js in `apps/web` (App Router). API clients in
+  `apps/web/src/lib` use `NEXT_PUBLIC_API_BASE_URL`.
+- Version control routes live under `/version-control/*` plus
+  `GET /articles/:slug/history`.
+- Tests are Deno-based (`deno test`) plus the engine harness at
+  `engine/test/run.ts`.
+
 ## Always apply: Building applications with concept design
 
 This repository is an application meant to be built according to the principles
@@ -504,8 +519,10 @@ import {
 The following rules establish choices for the runtime, framework, or any
 additional build steps.
 
-- Utilize the Deno runtime for simplified tooling and imports. Prefer to use
-  generic imports without version numbers to reliably import libraries.
+- Backend uses the Deno runtime for simplified tooling and imports. Prefer to
+  use `jsr:` / `npm:` imports without version numbers when possible.
+- Frontend uses Next.js in `apps/web` with Node packages. Use `npm` (or
+  `deno task` from `apps/web`) for dev/build there.
 - To the greatest extent possible, only implement application logic as
   synchronizations, and organize them under the `syncs/` folder. You may use
   whatever sub-file/folder structure that helps keep things clear, but remember
@@ -529,6 +546,9 @@ matched.
 In general, the concept design architecture affords reasoning piecemeal about
 the entire system, meaning that you should be able to test concepts
 individually, test synchronizations independently, and the frontend on its own.
+Key Deno test suites live in `concepts/test`, `syncs/app`,
+`syncs/version_control`, and `server.test.ts`; run `deno test` from the repo
+root, plus `deno run -A engine/test/run.ts` for the engine harness.
 Use output logs from `TRACE` level logging to find out if actions are occurring
 as expected or to debug synchronizations (you could build a small script or edit
 the logging behavior to pipe this information in a better way), and level

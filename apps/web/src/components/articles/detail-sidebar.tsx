@@ -59,7 +59,7 @@ export default function ArticleDetailSidebar() {
               >
                 Save & Merge
               </Button>
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 className="flex-1"
@@ -67,14 +67,14 @@ export default function ArticleDetailSidebar() {
                 disabled={selectedBranch === "main" || branchChanges.length > 0}
               >
                 Discard
-              </Button>
+              </Button> */}
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Change list</span>
-              <span>{branchChanges.length} items</span>
+              <span>Changes</span>
+              <Badge variant="secondary">{branchChanges.length}</Badge>
             </div>
             {branchChangesLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -86,9 +86,8 @@ export default function ArticleDetailSidebar() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-sidebar-foreground">{change.title}</p>
-                      <p className="text-xs text-muted-foreground">/{change.slug}</p>
                     </div>
-                    <Badge variant="outline" className="uppercase">
+                    <Badge variant="outline">
                       {change.changeType}
                     </Badge>
                   </div>

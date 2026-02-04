@@ -1,7 +1,7 @@
 # Concept design: concepts and synchronizations
 
-This repository is a minimal skeleton for building applications using concept
-design (inspired by Daniel Jackson's "The Essence of Software"). The system is
+This repository is a concept-design application that implements an backend (users, profiles, articles, comments, tags, favorites) plus a lightweight version-control layer (branches, commits, snapshots, history). It
+includes a Deno HTTP API and a Next.js frontend in `apps/web`. The system is
 composed of:
 
 - Concepts: small, independent modules that encapsulate a single purpose and
@@ -34,6 +34,9 @@ happens explicitly in synchronizations.
 ## Current Platform
 
 - Language: TypeScript.
+- Backend: Deno + Oak HTTP adapter (`server.ts`) wiring concepts + syncs in
+  `app.ts`.
+- Frontend: Next.js app in `apps/web` (App Router) consuming the HTTP API.
 - Concepts are TS classes, synchronizations are functions that specify behavior
   using a small set of declarative helpers.
 - Import helpers and types from `./engine/mod.ts`.
@@ -42,11 +45,17 @@ happens explicitly in synchronizations.
 
 ```
 <project-root>/
-├─ specs/     # Concept specifications (.concept)
-├─ concepts/  # `${Name}Concept` classes (actions + read-only queries)
-├─ syncs/     # Synchronization functions (when/where/then)
-├─ engine/    # Runtime (import via `engine/mod.ts`)
-└─ example.ts # Minimal wiring of concepts + synchronizations
+├─ app.ts                 # Wires concepts + syncs
+├─ server.ts              # Oak HTTP adapter
+├─ specs/                 # Concept specifications (.concept)
+├─ concepts/              # `${Name}Concept` classes (actions + read-only queries)
+├─ concepts/test/         # Concept unit tests
+├─ syncs/app/             # App syncs (users, profiles, articles, comments, tags)
+├─ syncs/version_control/ # Branch/commit/history syncs
+├─ engine/                # Runtime (import via `engine/mod.ts`)
+├─ apps/web/              # Next.js frontend
+├─ scripts/               # Utility scripts (seed data)
+└─ example.ts             # Minimal wiring of concepts + synchronizations
 ```
 
 ## Concepts
@@ -74,17 +83,20 @@ register(input: { user: string; name: string; email: string }):
   | { error: string };
 ```
 
-Tests:
+Tests (all Deno):
 
 ```
-deno test concepts/test
+deno test
 deno run -A engine/test/run.ts
 ```
 
+Key suites live in `concepts/test`, `syncs/app`, `syncs/version_control`, and
+`server.test.ts`.
+
 ## HTTP API + Frontend
 
-The backend exposes HTTP endpoints via `server.ts`. A minimal Next.js
-frontend lives in `apps/web` and renders the articles list from `GET /articles`.
+The backend exposes HTTP endpoints via `server.ts`. A Next.js frontend lives in
+`apps/web` and consumes the articles + version-control API.
 
 Start the backend (from repo root):
 
@@ -92,11 +104,13 @@ Start the backend (from repo root):
 deno run -A server.ts
 ```
 
-Start the frontend (from `apps/web/`):
+Start the frontend (from `apps/web/`), choose one:
 
 ```
-deno install --allow-scripts
 deno task dev
+# or
+npm install
+npm run dev
 ```
 
 Then open `http://localhost:3000/`. To point at a different API host, set
@@ -105,11 +119,30 @@ Then open `http://localhost:3000/`. To point at a different API host, set
 Manual validation checklist:
 - Start the backend and frontend as above.
 - Visit `http://localhost:3000/` and confirm the articles list renders.
-- If no articles exist yet, confirm the empty-state message appears.
+- If articles exist, open one to confirm the detail view, branch changes, and
+  history load.
+- If no articles exist yet, confirm the empty-state message appears (or seed
+  data first).
+
+### API surface (selected)
+
+- Users & profiles: `POST /users`, `GET /profiles`, `GET /user`, `PUT /user`
+- Articles: `POST /articles`, `GET /articles`, `GET /articles/:slug`,
+  `PUT /articles/:slug`, `DELETE /articles/:slug`
+- Comments: `POST /articles/:slug/comments`, `GET /articles/:slug/comments`,
+  `DELETE /articles/:slug/comments/:id`
+- Favorites & tags: `POST /articles/:slug/favorite`,
+  `DELETE /articles/:slug/favorite`, `GET /tags`
+- Version control: `POST /version-control/init`,
+  `POST /version-control/branches`, `GET /version-control/branches`,
+  `PUT /version-control/branches/current`, `GET /version-control/branches/current`,
+  `GET /version-control/branches/:name/changes`, `POST /version-control/commits`
+- History: `GET /articles/:slug/history`
 
 ### Seed demo articles
 
-With the backend running, you can seed demo users + articles:
+With the backend running, you can seed demo users + articles (the script also
+initializes version control if needed):
 
 ```
 deno run -A scripts/seed_articles.ts
@@ -302,16 +335,18 @@ See `example.ts` for a complete, runnable example.
 
 ## Debugging
 
-Synchronizations live under `syncs/`. They connect
-`API.request` calls to concept actions and format responses through
+Synchronizations live under `syncs/app` and `syncs/version_control`. They
+connect `API.request` calls to concept actions and format responses through
 `API.response`. To exercise them locally, run:
 
 ```
 deno test syncs/app/app.test.ts
+deno test syncs/version_control/version_control.test.ts
 ```
 
 The tests simulate API calls (register, create article, favorite,
-comments, tags, delete) and verify that responses are stored in `API` state.
+comments, tags, delete, branch/commit workflows) and verify that responses are
+stored in `API` state.
 
 Set logging on the engine to trace flows and matches:
 
