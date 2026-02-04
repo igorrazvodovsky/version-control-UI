@@ -13,7 +13,7 @@ type NavGroup = {
   items: NavItem[]
 }
 
-const workspaceOptions = ["Acme Corp", "Personal", "Team Project"]
+const workspaceOptions = ["All channels", "Direct sales", "Partner A", "Partner B"]
 
 const navGroups: NavGroup[] = [
   {

@@ -23,6 +23,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -59,6 +62,7 @@ import {
   Calculator,
   CreditCard,
   Smile,
+  Check,
 } from "lucide-react"
 import { useArticles } from "@/hooks/use-articles"
 import { cn } from "@/lib/utils"
@@ -96,19 +100,28 @@ export default function DualSidebarPage() {
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56" align="start">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
-                    {WORKSPACES.map((workspace) => (
-                      <DropdownMenuItem
-                        key={workspace}
-                        onClick={() => setActiveWorkspace(workspace)}
-                        className="gap-2 p-2"
-                      >
-                        <div className="flex size-6 items-center justify-center rounded-sm border">
-                          <span className="text-xs font-semibold">{workspace.charAt(0)}</span>
-                        </div>
-                        {workspace}
-                      </DropdownMenuItem>
-                    ))}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-2 p-2">
+                        <span>Workspace</span>
+                        <span className="ml-auto text-xs text-muted-foreground">{activeWorkspace}</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="min-w-56">
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+                        {WORKSPACES.map((workspace) => (
+                          <DropdownMenuItem
+                            key={workspace}
+                            onClick={() => setActiveWorkspace(workspace)}
+                            className="gap-2 p-2"
+                          >
+                            <div className="flex size-6 items-center justify-center rounded-sm border">
+                              <span className="text-xs font-semibold">{workspace.charAt(0)}</span>
+                            </div>
+                            <span className="flex-1 truncate">{workspace}</span>
+                            {workspace === activeWorkspace ? <Check className="size-4" /> : null}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="gap-2 p-2">
                       <div className="flex size-6 items-center justify-center rounded-md border border-dashed">

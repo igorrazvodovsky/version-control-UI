@@ -18,6 +18,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -25,7 +28,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -45,7 +47,7 @@ import {
   CreditCard,
   GitBranch,
   GitCommit,
-  Plus,
+  Check,
   Search,
   Settings,
   Smile,
@@ -59,110 +61,47 @@ type AppShellProps = {
   rightSidebar?: React.ReactNode
 }
 
-function SidebarVersionStatus() {
-  const detail = useOptionalArticleDetail()
-  const currentBranch = detail?.branches.find((branch) => branch.name === detail?.selectedBranch) ??
-    detail?.branches.find((branch) => branch.isCurrent)
-  const versionValue = currentBranch?.name === "main"
-    ? currentBranch?.version
-    : currentBranch?.baseVersion
-  const label = typeof versionValue === "number" ? `v${versionValue}` : "v—"
-
-  return (
-    <SidebarMenuButton size="lg">
-      <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-        <GitCommit className="size-4" />
-      </div>
-      <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-        <span className="truncate font-semibold">{label}</span>
-        <span className="truncate text-xs text-muted-foreground">Version</span>
-      </div>
-    </SidebarMenuButton>
-  )
-}
-
-function SidebarBranchMenu() {
-  const detail = useOptionalArticleDetail()
-  const branches = detail?.branches ?? []
-  const mainBranch = branches.find((branch) => branch.name === "main") ?? null
-  const otherBranches = branches.filter((branch) => branch.name !== "main")
-  const selected = detail?.selectedBranch
-  const current = branches.find((branch) => branch.name === selected) ??
-    branches.find((branch) => branch.isCurrent)
-  const versionValue = current?.name === "main" ? current?.version : current?.baseVersion
-  const versionLabel = typeof versionValue === "number" ? `v${versionValue}` : "v—"
-  const branchLabel = current?.name ?? "main"
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <SidebarMenuButton size="lg">
-          <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <GitBranch className="size-4" />
-          </div>
-          <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate font-semibold">{branchLabel}</span>
-            <span className="truncate text-xs text-muted-foreground">{versionLabel}</span>
-          </div>
-          <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-        </SidebarMenuButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
-        side="top"
-        align="start"
-      >
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Versions</DropdownMenuLabel>
-        {mainBranch ? (
-          <DropdownMenuItem
-            key={mainBranch.id}
-            onClick={() => detail?.handleBranchSelect(mainBranch.name)}
-            className="justify-between"
-          >
-            <span className="truncate">{typeof mainBranch.version === "number" ? `v${mainBranch.version}` : "v—"}</span>
-          </DropdownMenuItem>
-        ) : ""}
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Tickets</DropdownMenuLabel>
-        {otherBranches.length ? (
-          otherBranches.map((branch) => {
-            const version = typeof branch.baseVersion === "number" ? `v${branch.baseVersion}` : "v—"
-            return (
-              <DropdownMenuItem
-                key={branch.id}
-                onClick={() => detail?.handleBranchSelect(branch.name)}
-                className="justify-between"
-              >
-                <span className="truncate">{branch.name}</span>
-                <span className="text-xs text-muted-foreground">{version}</span>
-              </DropdownMenuItem>
-            )
-          })
-        ) : (
-          <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-            No other tickets
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => detail?.handleCreateBranch()} className="gap-2">
-          <GitCommit className="size-4" />
-          Create new ticket
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 export default function AppShell({ children, rightSidebar }: AppShellProps) {
   const params = useParams()
   const slugParam = params?.slug
   const slug = Array.isArray(slugParam) ? slugParam[0] ?? "" : slugParam ?? ""
+  const shouldProvideArticle = typeof slug === "string" && slug.length > 0
+
+  if (!shouldProvideArticle) {
+    return <AppShellInner rightSidebar={rightSidebar}>{children}</AppShellInner>
+  }
+
+  return (
+    <ArticleDetailProvider slug={slug}>
+      <AppShellInner rightSidebar={rightSidebar}>{children}</AppShellInner>
+    </ArticleDetailProvider>
+  )
+}
+
+function AppShellInner(
+  { children, rightSidebar }: AppShellProps,
+) {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   const [activeWorkspace, setActiveWorkspace] = useState(workspaceOptions[0] ?? "Workspace")
   const [commandOpen, setCommandOpen] = useState(false)
   const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined
-  const shouldProvideArticle = typeof slug === "string" && slug.length > 0
+
+  const detail = useOptionalArticleDetail()
+  const isTicketContext = detail !== null
+  const branches = detail?.branches ?? []
+  const mainBranch = branches.find((branch) => branch.name === "main") ?? null
+  const otherBranches = branches.filter((branch) => branch.name !== "main")
+  const selectedBranch = detail?.selectedBranch
+  const currentBranch = branches.find((branch) => branch.name === selectedBranch) ??
+    branches.find((branch) => branch.isCurrent) ??
+    null
+  const currentBranchName = currentBranch?.name ?? selectedBranch ?? "Master"
+  const versionValue = currentBranch?.name === "main" ? currentBranch?.version : currentBranch?.baseVersion
+  const versionLabel = typeof versionValue === "number" ? `v${versionValue}` : "v—"
+  const contextLabel = !isTicketContext
+    ? "Free Plan"
+    : (detail.branchesLoading ? "Loading tickets…" : `${currentBranchName} • ${versionLabel}`)
 
   const shell = (
     <div className="flex h-screen bg-background">
@@ -177,37 +116,108 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
                       size="lg"
                       className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                     >
-                      <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                        <span className="text-sm font-semibold">{activeWorkspace.charAt(0)}</span>
-                      </div>
-                      <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                        <span className="truncate font-semibold">{activeWorkspace}</span>
-                        <span className="truncate text-xs text-muted-foreground">Free Plan</span>
-                      </div>
-                      <ChevronsUpDown className="ml-auto group-data-[collapsible=icon]:hidden" />
-                    </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56" align="start">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
-                    {workspaceOptions.map((workspace) => (
-                      <DropdownMenuItem
-                        key={workspace}
-                        onClick={() => setActiveWorkspace(workspace)}
-                        className="gap-2 p-2"
-                      >
-                        <div className="flex size-6 items-center justify-center rounded-sm border">
-                          <span className="text-xs font-semibold">{workspace.charAt(0)}</span>
-                        </div>
-                        {workspace}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
+	                      <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+	                        <span className="truncate font-semibold">{contextLabel}</span>
+	                        <span className="truncate text-xs text-muted-foreground">{activeWorkspace}</span>
+	                      </div>
+	                      <ChevronsUpDown className="ml-auto group-data-[collapsible=icon]:hidden" />
+	                    </SidebarMenuButton>
+	                  </DropdownMenuTrigger>
+	                  <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-56" align="start">
+	                    <DropdownMenuSub>
+	                      <DropdownMenuSubTrigger className="gap-2 p-2">
+	                        <span>{activeWorkspace}</span>
+	                      </DropdownMenuSubTrigger>
+	                      <DropdownMenuSubContent className="min-w-56">
+	                        {workspaceOptions.map((workspace) => (
+	                          <DropdownMenuItem
+	                            key={workspace}
+                            onClick={() => setActiveWorkspace(workspace)}
+                            className="gap-2 p-2"
+                          >
+                            <div className="flex size-6 items-center justify-center rounded-sm border">
+                              <span className="text-xs font-semibold">{workspace.charAt(0)}</span>
+                            </div>
+                            <span className="flex-1 truncate">{workspace}</span>
+                            {workspace === activeWorkspace ? <Check className="size-4" /> : null}
+                          </DropdownMenuItem>
+	                        ))}
+		                      </DropdownMenuSubContent>
+		                    </DropdownMenuSub>
+		                    {isTicketContext ? (
+		                      <DropdownMenuSub>
+		                        <DropdownMenuSubTrigger className="gap-2 p-2">
+		                          {/* <GitBranch className="size-4" /> */}
+		                          {currentBranchName}
+		                        </DropdownMenuSubTrigger>
+		                        <DropdownMenuSubContent className="min-w-56">
+		                          {detail.branchesLoading && branches.length === 0 ? (
+		                            <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+		                              Loading tickets…
+		                            </DropdownMenuItem>
+		                          ) : (
+		                            <>
+		                              <DropdownMenuLabel className="text-xs text-muted-foreground">Versions</DropdownMenuLabel>
+		                              {mainBranch ? (
+		                                <DropdownMenuItem
+		                                  key={mainBranch.id}
+		                                  onClick={() => detail?.handleBranchSelect(mainBranch.name)}
+		                                  className="gap-2"
+		                                >
+		                                  <span className="flex-1 truncate">main</span>
+		                                  <span className="text-xs text-muted-foreground">
+		                                    {typeof mainBranch.version === "number" ? `v${mainBranch.version}` : "v—"}
+		                                  </span>
+		                                  {currentBranchName === mainBranch.name ? <Check className="size-4" /> : null}
+		                                </DropdownMenuItem>
+		                              ) : null}
+		                              <DropdownMenuSeparator />
+		                              <DropdownMenuLabel className="text-xs text-muted-foreground">Tickets</DropdownMenuLabel>
+		                              {otherBranches.length ? (
+		                                otherBranches.map((branch) => {
+		                                  const version = typeof branch.baseVersion === "number" ? `v${branch.baseVersion}` : "v—"
+		                                  return (
+		                                    <DropdownMenuItem
+		                                      key={branch.id}
+		                                      onClick={() => detail?.handleBranchSelect(branch.name)}
+		                                      className="gap-2"
+		                                    >
+		                                      <span className="flex-1 truncate">{branch.name}</span>
+		                                      <span className="text-xs text-muted-foreground">{version}</span>
+		                                      {currentBranchName === branch.name ? <Check className="size-4" /> : null}
+		                                    </DropdownMenuItem>
+		                                  )
+		                                })
+		                              ) : (
+		                                <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+		                                  No other tickets
+		                                </DropdownMenuItem>
+		                              )}
+		                              <DropdownMenuSeparator />
+		                              <DropdownMenuItem onClick={() => detail?.handleCreateBranch()} className="gap-2">
+		                                <GitCommit className="size-4" />
+		                                Create new ticket
+		                              </DropdownMenuItem>
+		                            </>
+		                          )}
+		                        </DropdownMenuSubContent>
+		                      </DropdownMenuSub>
+		                    ) : null}
+	                    <DropdownMenuSeparator />
+                    {/* <DropdownMenuLabel className="text-xs text-muted-foreground">Domain</DropdownMenuLabel>
                     <DropdownMenuItem className="gap-2 p-2">
+                        <div className="flex size-6 items-center justify-center rounded-sm border">
+                          <span className="text-xs font-semibold">-</span>
+                        </div>
+                        All
+                      </DropdownMenuItem> */}
+                    {/* <DropdownMenuSeparator /> */}
+                    {/* <DropdownMenuItem className="gap-2 p-2">
                       <div className="flex size-6 items-center justify-center rounded-md border border-dashed">
                         <Plus className="size-4" />
                       </div>
                       <div className="font-medium text-muted-foreground">Add workspace</div>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </SidebarMenuItem>
@@ -231,18 +241,10 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
-            ))}
-          </SidebarContent>
+	            ))}
+	          </SidebarContent>
 
-          <SidebarFooter>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                {shouldProvideArticle ? <SidebarBranchMenu /> : <SidebarVersionStatus />}
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarFooter>
-
-        </Sidebar>
+	        </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex items-center justify-between border-border bg-background px-4 py-3">
@@ -342,9 +344,5 @@ export default function AppShell({ children, rightSidebar }: AppShellProps) {
     </div>
   )
 
-  if (!shouldProvideArticle) {
-    return shell
-  }
-
-  return <ArticleDetailProvider slug={slug}>{shell}</ArticleDetailProvider>
+  return shell
 }
