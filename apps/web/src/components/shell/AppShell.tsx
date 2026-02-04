@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { ArticleDetailProvider, useOptionalArticleDetail } from "@/components/articles/detail-provider"
 import { Button } from "@/components/ui/button"
@@ -69,7 +69,9 @@ import {
   Plus,
   Pencil,
 } from "lucide-react"
+import { DEFAULT_API_BASE_URL } from "@/lib/articles"
 import { cn } from "@/lib/utils"
+import { fetchBranches, fetchCurrentBranch, switchBranch, type VersionControlBranch } from "@/lib/version-control"
 import { navGroups, workspaceOptions } from "@/components/shell/nav"
 import { toast } from "@/hooks/use-toast"
 
@@ -109,21 +111,79 @@ function AppShellInner(
 
   const detail = useOptionalArticleDetail()
   const isTicketContext = detail !== null
-  const branches = detail?.branches ?? []
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL
+  const [shellBranches, setShellBranches] = useState<VersionControlBranch[]>([])
+  const [shellBranchesLoading, setShellBranchesLoading] = useState(false)
+  const [shellSelectedBranch, setShellSelectedBranch] = useState<string | null>(null)
+  const [shellCurrentBranch, setShellCurrentBranch] = useState<VersionControlBranch | null>(null)
+
+  useEffect(() => {
+    if (isTicketContext) return
+    let cancelled = false
+
+    const loadBranches = async () => {
+      setShellBranchesLoading(true)
+      try {
+        const [branchList, current] = await Promise.all([
+          fetchBranches({ baseUrl: apiBaseUrl, requestInit: { cache: "no-store" } }),
+          fetchCurrentBranch({ baseUrl: apiBaseUrl, requestInit: { cache: "no-store" } }),
+        ])
+
+        if (cancelled) return
+        setShellBranches(branchList.branches)
+        setShellCurrentBranch(current.branch)
+        setShellSelectedBranch(current.branch.name)
+      } catch (err) {
+        if (cancelled) return
+        const message = err instanceof Error ? err.message : "Unable to load branches."
+        toast({ title: "Branches unavailable", description: message, variant: "destructive" })
+      } finally {
+        if (!cancelled) {
+          setShellBranchesLoading(false)
+        }
+      }
+    }
+
+    loadBranches()
+
+    return () => {
+      cancelled = true
+    }
+  }, [apiBaseUrl, isTicketContext])
+
+  const branches = isTicketContext ? detail?.branches ?? [] : shellBranches
+  const branchesLoading = isTicketContext ? detail?.branchesLoading ?? false : shellBranchesLoading
+  const selectedBranch = isTicketContext ? detail?.selectedBranch ?? null : shellSelectedBranch
+  const currentBranch = isTicketContext
+    ? branches.find((branch) => branch.name === selectedBranch) ??
+      branches.find((branch) => branch.isCurrent) ??
+      null
+    : shellCurrentBranch ?? branches.find((branch) => branch.name === selectedBranch) ?? null
   const mainBranch = branches.find((branch) => branch.name === "main") ?? null
   const otherBranches = branches.filter((branch) => branch.name !== "main")
-  const selectedBranch = detail?.selectedBranch
-  const currentBranch = branches.find((branch) => branch.name === selectedBranch) ??
-    branches.find((branch) => branch.isCurrent) ??
-    null
   const currentBranchName = currentBranch?.name ?? selectedBranch ?? "Master"
   const currentBranchLabel = currentBranch?.label ?? currentBranchName
   const canRenameTicket = isTicketContext && typeof selectedBranch === "string" && selectedBranch !== "main"
   const versionValue = currentBranch?.name === "main" ? currentBranch?.version : currentBranch?.baseVersion
   const versionLabel = typeof versionValue === "number" ? `v${versionValue}` : "v—"
   const contextLabel = !isTicketContext
-    ? "Free Plan"
-    : (detail.branchesLoading ? "Loading tickets…" : `${currentBranchLabel} • ${versionLabel}`)
+    ? (branchesLoading ? "Loading branches…" : `${currentBranchLabel}`)
+    : (detail.branchesLoading ? "Loading tickets…" : `${currentBranchLabel}`)
+
+  const handleShellBranchSelect = async (name: string) => {
+    if (shellSelectedBranch === name) return
+    setShellSelectedBranch(name)
+    try {
+      await switchBranch({ baseUrl: apiBaseUrl, name })
+      const current = await fetchCurrentBranch({ baseUrl: apiBaseUrl, requestInit: { cache: "no-store" } })
+      setShellCurrentBranch(current.branch)
+      setShellSelectedBranch(current.branch.name)
+      toast({ title: "Branch switched", description: `Now on ${current.branch.label ?? current.branch.name}.` })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to switch branches."
+      toast({ title: "Switch failed", description: message, variant: "destructive" })
+    }
+  }
 
   const openRenameDialog = () => {
     if (!canRenameTicket) return
@@ -197,16 +257,16 @@ function AppShellInner(
 		                      </DropdownMenuSubContent>
 		                    </DropdownMenuSub>
                         	                    <DropdownMenuSeparator />
-		                    {isTicketContext ? (
+		                    {(isTicketContext || branches.length > 0 || branchesLoading) ? (
 		                      <DropdownMenuSub>
 		                        <DropdownMenuSubTrigger className="gap-2 p-2">
 		                          {/* <GitBranch className="size-4" /> */}
 		                          {currentBranchLabel}
 		                        </DropdownMenuSubTrigger>
 		                        <DropdownMenuSubContent className="min-w-56">
-		                          {detail.branchesLoading && branches.length === 0 ? (
+		                          {branchesLoading && branches.length === 0 ? (
 		                            <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-		                              Loading tickets…
+		                              Loading branches…
 		                            </DropdownMenuItem>
 		                          ) : (
 		                            <>
@@ -214,7 +274,13 @@ function AppShellInner(
 		                              {mainBranch ? (
 		                                <DropdownMenuItem
 		                                  key={mainBranch.id}
-		                                  onClick={() => detail?.handleBranchSelect(mainBranch.name)}
+		                                  onClick={() => {
+                                    if (isTicketContext) {
+                                      detail?.handleBranchSelect(mainBranch.name)
+                                    } else {
+                                      void handleShellBranchSelect(mainBranch.name)
+                                    }
+                                  }}
 		                                  className="gap-2"
 		                                >
 		                                  <span className="flex-1 truncate">main</span>
@@ -232,7 +298,13 @@ function AppShellInner(
 		                                  return (
 		                                  <DropdownMenuItem
 		                                      key={branch.id}
-		                                      onClick={() => detail?.handleBranchSelect(branch.name)}
+		                                      onClick={() => {
+                                        if (isTicketContext) {
+                                          detail?.handleBranchSelect(branch.name)
+                                        } else {
+                                          void handleShellBranchSelect(branch.name)
+                                        }
+                                      }}
 		                                      className="gap-2"
 		                                    >
 		                                      <span className="flex-1 truncate">{branch.label}</span>
@@ -247,10 +319,12 @@ function AppShellInner(
 		                                </DropdownMenuItem>
 		                              )}
 		                              <DropdownMenuSeparator />
-		                              <DropdownMenuItem onClick={() => detail?.handleCreateBranch()} className="gap-2">
-		                                <GitCommit className="size-4" />
-		                                Create new ticket
-		                              </DropdownMenuItem>
+                                  {isTicketContext ? (
+		                                <DropdownMenuItem onClick={() => detail?.handleCreateBranch()} className="gap-2">
+		                                  <GitCommit className="size-4" />
+		                                  Create new ticket
+		                                </DropdownMenuItem>
+                                  ) : null}
 		                            </>
 		                          )}
 		                        </DropdownMenuSubContent>
@@ -309,12 +383,12 @@ function AppShellInner(
                         size="lg"
                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                       >
-                        <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-200">
                           <Settings className="size-4" />
                         </div>
                         <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                           <span className="truncate font-semibold">Administration</span>
-                          {/* <span className="truncate text-xs text-muted-foreground">john@example.com</span> */}
+                          <span className="truncate text-xs text-muted-foreground">Set up, releases, stuff</span>
                         </div>
                         <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                       </SidebarMenuButton>

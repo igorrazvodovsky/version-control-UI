@@ -3,7 +3,7 @@
 import { ArticlesTableState } from "@/components/articles/articles-table-state"
 import { useArticles } from "@/hooks/use-articles"
 
-export default function ArticlesPage() {
+export default function DualSidebarPage() {
   const { articles, error, loading, apiBaseUrl } = useArticles()
 
   return (
