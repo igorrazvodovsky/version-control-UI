@@ -25,6 +25,23 @@ function getMainBranchId(Branch: BranchConcept) {
     return Branch._getByName({ name: DEFAULT_BRANCH_NAME })[0]?.branch;
 }
 
+function getCommitVersion(Commit: CommitConcept, commit: string | undefined) {
+    if (!commit) return undefined;
+    return Commit._get({ commit })[0]?.version;
+}
+
+function getNextMainVersion(Commit: CommitConcept, mainBranchId: string) {
+    const commits = Commit._listByBranch({ branch: mainBranchId });
+    let maxVersion = 0;
+    for (const row of commits) {
+        const version = Commit._get({ commit: row.commit })[0]?.version;
+        if (typeof version === "number" && version > maxVersion) {
+            maxVersion = version;
+        }
+    }
+    return maxVersion + 1;
+}
+
 function hasConflict(Article: ArticleConcept, branch: string) {
     const articleIds = Article._listByBranch({ branch }).map((row) => row.article);
     for (const articleId of articleIds) {
@@ -574,7 +591,7 @@ export function makeVersionControlArticleSyncs(
         ),
     });
 
-    const CreateBranch = ({ request, input, name, branch }: Vars) => ({
+    const CreateBranch = ({ request, input, name, branch, baseVersion }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/branches", input }, {
                 request,
@@ -587,13 +604,17 @@ export function makeVersionControlArticleSyncs(
                 if (!nameValue) return [];
                 const existing = Branch._getByName({ name: nameValue })[0]?.branch;
                 if (existing) return [];
+                const mainId = getMainBranchId(Branch);
+                const mainHead = mainId ? Branch._getHead({ branch: mainId })[0]?.commit : undefined;
+                const mainVersion = mainHead ? getCommitVersion(Commit, mainHead) : undefined;
                 return [{
                     ...frame,
                     [name]: nameValue,
                     [branch]: `branch:${crypto.randomUUID()}`,
+                    [baseVersion]: mainVersion,
                 }];
             }),
-        then: actions([Branch.create, { branch, name }]),
+        then: actions([Branch.create, { branch, name, baseVersion }]),
     });
 
     const CreateBranchMissing = ({ request, input, output, code }: Vars) => ({
@@ -814,13 +835,19 @@ export function makeVersionControlArticleSyncs(
                     .filter((row) =>
                         row !== undefined && row.status !== "COMMITTED"
                     )
-                    .map((row) => ({
-                        id: row?.branch,
-                        name: row?.name,
-                        status: row?.status,
-                        head: row?.head ?? null,
-                        isCurrent: row?.branch === currentId,
-                    }));
+                    .map((row) => {
+                        const isMain = row?.name === DEFAULT_BRANCH_NAME;
+                        const version = isMain ? getCommitVersion(Commit, row?.head) : undefined;
+                        return {
+                            id: row?.branch,
+                            name: row?.name,
+                            status: row?.status,
+                            head: row?.head ?? null,
+                            baseVersion: row?.baseVersion ?? null,
+                            version: version ?? null,
+                            isCurrent: row?.branch === currentId,
+                        };
+                    });
                 return {
                     ...frame,
                     [output]: { branches: results },
@@ -842,6 +869,8 @@ export function makeVersionControlArticleSyncs(
                 if (!currentId) return [];
                 const row = Branch._get({ branch: currentId })[0];
                 if (!row) return [];
+                const isMain = row.name === DEFAULT_BRANCH_NAME;
+                const version = isMain ? getCommitVersion(Commit, row.head) : undefined;
                 return [{
                     ...frame,
                     [output]: {
@@ -850,6 +879,8 @@ export function makeVersionControlArticleSyncs(
                             name: row.name,
                             status: row.status,
                             head: row.head ?? null,
+                            baseVersion: row.baseVersion ?? null,
+                            version: version ?? null,
                         },
                     },
                     [code]: 200,
@@ -1475,6 +1506,7 @@ export function makeVersionControlArticleSyncs(
         parents,
         message,
         sourceBranch,
+        version,
     }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/merges", input }, {
@@ -1508,6 +1540,9 @@ export function makeVersionControlArticleSyncs(
                     sourceHead,
                 );
                 if (plan.conflicts.length > 0) return [];
+                const nextVersion = targetBranch === getMainBranchId(Branch)
+                    ? getNextMainVersion(Commit, targetBranch)
+                    : undefined;
                 return [{
                     ...frame,
                     [branch]: targetBranch,
@@ -1515,10 +1550,11 @@ export function makeVersionControlArticleSyncs(
                     [commit]: crypto.randomUUID(),
                     [parents]: [targetHead, sourceHead],
                     [message]: mergeMessage,
+                    [version]: nextVersion,
                 }];
             }),
         then: actions(
-            [Commit.create, { commit, branch, parents, message }],
+            [Commit.create, { commit, branch, parents, message, version }],
             [Branch.setStatus, { branch: sourceBranch, status: "COMMITTED" }],
         ),
     });
@@ -1693,6 +1729,7 @@ export function makeVersionControlArticleSyncs(
         commit,
         parents,
         message,
+        version,
     }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/commits", input }, {
@@ -1717,9 +1754,10 @@ export function makeVersionControlArticleSyncs(
                     [commit]: crypto.randomUUID(),
                     [parents]: [parentId],
                     [message]: messageValue,
+                    [version]: getNextMainVersion(Commit, branchId),
                 }];
             }),
-        then: actions([Commit.create, { commit, branch, parents, message }]),
+        then: actions([Commit.create, { commit, branch, parents, message, version }]),
     });
 
     const CommitOnMainWithoutParent = ({
@@ -1729,6 +1767,7 @@ export function makeVersionControlArticleSyncs(
         commit,
         parents,
         message,
+        version,
     }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/commits", input }, {
@@ -1753,9 +1792,10 @@ export function makeVersionControlArticleSyncs(
                     [commit]: crypto.randomUUID(),
                     [parents]: [],
                     [message]: messageValue,
+                    [version]: getNextMainVersion(Commit, branchId),
                 }];
             }),
-        then: actions([Commit.create, { commit, branch, parents, message }]),
+        then: actions([Commit.create, { commit, branch, parents, message, version }]),
     });
 
     const CommitMergeApplyCreates = ({
@@ -1991,6 +2031,7 @@ export function makeVersionControlArticleSyncs(
         parents,
         message,
         sourceBranch,
+        version,
     }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/commits", input }, {
@@ -2039,10 +2080,11 @@ export function makeVersionControlArticleSyncs(
                     [commit]: crypto.randomUUID(),
                     [parents]: parentList,
                     [message]: messageValue,
+                    [version]: getNextMainVersion(Commit, mainId),
                 }];
             }),
         then: actions(
-            [Commit.create, { commit, branch, parents, message }],
+            [Commit.create, { commit, branch, parents, message, version }],
             [Branch.setStatus, { branch: sourceBranch, status: "COMMITTED" }],
         ),
     });
@@ -2053,11 +2095,22 @@ export function makeVersionControlArticleSyncs(
             [Commit.create, {}, { commit }],
         ),
         where: (frames: Frames) =>
-            frames.map((frame) => ({
-                ...frame,
-                [output]: { ok: true, commit: frame[commit] },
-                [code]: 201,
-            })),
+            frames.map((frame) => {
+                const commitId = frame[commit];
+                if (typeof commitId !== "string") {
+                    return {
+                        ...frame,
+                        [output]: errorOutput("commit not found"),
+                        [code]: 500,
+                    };
+                }
+                const commitRow = Commit._get({ commit: commitId })[0];
+                return {
+                    ...frame,
+                    [output]: { ok: true, commit: commitId, version: commitRow?.version ?? null },
+                    [code]: 201,
+                };
+            }),
         then: actions([API.response, { request, output, code }]),
     });
 

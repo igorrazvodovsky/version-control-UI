@@ -2,7 +2,6 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useArticleDetail } from "@/components/articles/detail-provider"
@@ -10,14 +9,11 @@ import { Clock, Info } from "lucide-react"
 
 export default function ArticleDetailSidebar() {
   const {
-    branches,
-    branchesLoading,
     selectedBranch,
     branchChanges,
     branchChangesLoading,
     history,
     historyLoading,
-    handleBranchSelect,
     handleSaveCommit,
     handleDiscard,
     saveStatus,
@@ -32,24 +28,6 @@ export default function ArticleDetailSidebar() {
         </TabsList>
         <TabsContent value="branch" className="mt-4 space-y-5">
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Select
-                value={selectedBranch ?? undefined}
-                onValueChange={handleBranchSelect}
-                disabled={branchesLoading}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.name}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex gap-2">
               <Button
                 size="sm"

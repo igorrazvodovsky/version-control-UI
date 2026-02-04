@@ -63,6 +63,7 @@ type ArticleDetailContextValue = {
   handleBranchSelect: (nextBranch: string) => Promise<void>
   handleSaveCommit: () => Promise<void>
   handleDiscard: () => Promise<void>
+  handleCreateBranch: () => Promise<void>
 }
 
 type ArticleDetailProviderProps = {
@@ -472,6 +473,24 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
     }
   }
 
+  const handleCreateBranch = async () => {
+    try {
+      await ensureEditBranch()
+      await loadBranches()
+      toast({
+        title: "Branch ready",
+        description: "Switched to the active edit branch.",
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to create a branch."
+      toast({
+        title: "Branch creation failed",
+        description: message,
+        variant: "destructive",
+      })
+    }
+  }
+
   const statusLabel = (() => {
     if (saveStatus === "saving") return "Saving…"
     if (saveStatus === "error") return "Not saved"
@@ -501,6 +520,7 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
     handleBranchSelect,
     handleSaveCommit,
     handleDiscard,
+    handleCreateBranch,
   }
 
   return <ArticleDetailContext.Provider value={value}>{children}</ArticleDetailContext.Provider>
@@ -512,4 +532,8 @@ export function useArticleDetail() {
     throw new Error("useArticleDetail must be used within ArticleDetailProvider.")
   }
   return context
+}
+
+export function useOptionalArticleDetail() {
+  return useContext(ArticleDetailContext)
 }

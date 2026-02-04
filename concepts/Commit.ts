@@ -4,6 +4,7 @@ export class CommitConcept {
         {
             branch: string;
             parents: string[];
+            version?: number;
             message: string;
             createdAt: string;
         }
@@ -14,19 +15,25 @@ export class CommitConcept {
         branch,
         message,
         parents,
+        version,
     }: {
         commit: string;
         branch: string;
         message: string;
         parents: string[];
+        version?: number;
     }) {
         if (this.commits.has(commit)) {
             return { error: "commit already exists" };
+        }
+        if (version !== undefined && Number.isNaN(version)) {
+            return { error: "version must be a number" };
         }
         const now = new Date().toISOString();
         this.commits.set(commit, {
             branch,
             parents: [...parents],
+            version,
             message,
             createdAt: now,
         });
@@ -37,6 +44,7 @@ export class CommitConcept {
         commit: string;
         branch: string;
         parents: string[];
+        version: number | undefined;
         message: string;
         createdAt: string;
     }[] {
@@ -46,6 +54,7 @@ export class CommitConcept {
             commit,
             branch: existing.branch,
             parents: [...existing.parents],
+            version: existing.version,
             message: existing.message,
             createdAt: existing.createdAt,
         }];

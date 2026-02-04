@@ -17,6 +17,12 @@ Deno.test("branch operational principle", () => {
     assertEqual("branch" in createFeat, true);
     const feat = branches._get({ branch: "b2" })[0];
     assertEqual(feat?.status, "IN_PROGRESS");
+    assertEqual(feat?.baseVersion, undefined);
+
+    const createRelease = branches.create({ branch: "b3", name: "release", baseVersion: 4 });
+    assertEqual("branch" in createRelease, true);
+    const release = branches._get({ branch: "b3" })[0];
+    assertEqual(release?.baseVersion, 4);
     const markCommitted = branches.setStatus({ branch: "b2", status: "COMMITTED" });
     assertEqual("branch" in markCommitted, true);
     const committed = branches._get({ branch: "b2" })[0];

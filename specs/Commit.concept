@@ -9,6 +9,7 @@ state
     a set of Commits with
         a branch Branches
         a parents set of Commits
+        an optional version Number
         a message String
         a createdAt DateTime
 
@@ -16,11 +17,14 @@ actions
     create (commit: Commits, branch: Branches, parents: set of Commits, message: String) : (commit: Commits)
         add commit with parents
         return commit
+    create (commit: Commits, branch: Branches, parents: set of Commits, message: String, version: Number) : (commit: Commits)
+        add commit with parents and version
+        return commit
     create (commit: Commits, branch: Branches, parents: set of Commits, message: String) : (error: String)
         if commit already exists, return error
 
 queries
-    _get (commit: Commits) : (commit: Commits, branch: Branches, parents: set of Commits, message: String, createdAt: DateTime)
+    _get (commit: Commits) : (commit: Commits, branch: Branches, parents: set of Commits, version: Number, message: String, createdAt: DateTime)
         fetch commit
     _listByBranch (branch: Branches) : (commit: Commits)
         list commits for branch

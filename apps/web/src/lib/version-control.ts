@@ -10,6 +10,8 @@ export type VersionControlBranch = {
   status: VersionControlBranchStatus;
   head?: string | null;
   isCurrent?: boolean;
+  baseVersion?: number | null;
+  version?: number | null;
 };
 
 export type BranchChange = {
@@ -117,7 +119,7 @@ export async function commitBranch(
     requestInit,
     message,
   }: FetchOptions & { message: string },
-): Promise<{ ok: boolean; commit: string }> {
+): Promise<{ ok: boolean; commit: string; version: number | null }> {
   const url = new URL("/version-control/commits", baseUrl).toString();
   return fetchJson(url, fetcher, {
     method: "POST",

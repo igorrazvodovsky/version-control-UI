@@ -9,12 +9,16 @@ state
     a set of Branches with
         a name String
         an optional head Commits
+        an optional baseVersion Number
         a status String
         a createdAt DateTime
 
 actions
     create (branch: Branches, name: String) : (branch: Branches)
         add branch with name and timestamp
+        return branch
+    create (branch: Branches, name: String, baseVersion: Number) : (branch: Branches)
+        add branch with name, base version, and timestamp
         return branch
     create (branch: Branches, name: String) : (error: String)
         if name is not unique or invalid, return error
@@ -32,7 +36,7 @@ actions
         if branch does not exist, return error
 
 queries
-    _get (branch: Branches) : (branch: Branches, name: String, head: Commits, status: String)
+    _get (branch: Branches) : (branch: Branches, name: String, head: Commits, baseVersion: Number, status: String)
         fetch branch
     _getByName (name: String) : (branch: Branches)
         lookup branch by name

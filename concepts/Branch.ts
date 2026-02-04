@@ -4,16 +4,20 @@ export class BranchConcept {
         {
             name: string;
             head?: string;
+            baseVersion?: number;
             status: "MAIN" | "IN_PROGRESS" | "COMMITTED";
             createdAt: string;
         }
     >();
     private byName = new Map<string, string>();
 
-    create({ branch, name }: { branch: string; name: string }) {
+    create({ branch, name, baseVersion }: { branch: string; name: string; baseVersion?: number }) {
         const trimmedName = name.trim();
         if (!trimmedName) {
             return { error: "name required" };
+        }
+        if (baseVersion !== undefined && Number.isNaN(baseVersion)) {
+            return { error: "baseVersion must be a number" };
         }
         if (this.branches.has(branch)) {
             return { error: "branch already exists" };
@@ -23,7 +27,12 @@ export class BranchConcept {
         }
         const now = new Date().toISOString();
         const status = trimmedName === "main" ? "MAIN" : "IN_PROGRESS";
-        this.branches.set(branch, { name: trimmedName, createdAt: now, status });
+        this.branches.set(branch, {
+            name: trimmedName,
+            createdAt: now,
+            status,
+            baseVersion,
+        });
         this.byName.set(trimmedName, branch);
         return { branch };
     }
@@ -56,6 +65,7 @@ export class BranchConcept {
         branch: string;
         name: string;
         head: string | undefined;
+        baseVersion: number | undefined;
         status: string;
     }[] {
         const existing = this.branches.get(branch);
@@ -64,6 +74,7 @@ export class BranchConcept {
             branch,
             name: existing.name,
             head: existing.head,
+            baseVersion: existing.baseVersion,
             status: existing.status,
         }];
     }

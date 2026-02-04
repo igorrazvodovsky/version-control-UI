@@ -43,7 +43,7 @@ function setup() {
 }
 
 Deno.test("version control: branch switching and commit capture", async () => {
-    const { API, CurrentBranch, Branch, Article, ArticleSnapshot, Tag, TagSnapshot } = setup();
+    const { API, CurrentBranch, Branch, Commit, Article, ArticleSnapshot, Tag, TagSnapshot } = setup();
 
     await API.request({
         request: "r1",
@@ -77,6 +77,8 @@ Deno.test("version control: branch switching and commit capture", async () => {
 
     const head = Branch._getHead({ branch: mainBranchId })[0]?.commit;
     assert(head);
+    const headCommit = Commit._get({ commit: head })[0];
+    assertEqual(headCommit?.version, 1);
 
     const snapshots = ArticleSnapshot._listByCommit({ commit: head });
     assertEqual(snapshots.length, 1);
@@ -210,12 +212,22 @@ Deno.test("version control: branch list and change list", async () => {
     const branchList = API._get({ request: "b5" })[0];
     assert(branchList);
     const branchOutput = branchList.output as {
-        branches: { name: string; status: string; isCurrent: boolean }[];
+        branches: {
+            name: string;
+            status: string;
+            isCurrent: boolean;
+            baseVersion?: number | null;
+            version?: number | null;
+        }[];
     };
     assertEqual(
         branchOutput.branches.some((branch) => branch.name === "feat"),
         true,
     );
+    const mainBranch = branchOutput.branches.find((branch) => branch.name === "main");
+    const featBranch = branchOutput.branches.find((branch) => branch.name === "feat");
+    assertEqual(mainBranch?.version, 1);
+    assertEqual(featBranch?.baseVersion, 1);
 
     await API.request({
         request: "b6",
@@ -224,9 +236,10 @@ Deno.test("version control: branch list and change list", async () => {
         input: {},
     });
     const current = API._get({ request: "b6" })[0]?.output as {
-        branch?: { name: string };
+        branch?: { name: string; baseVersion?: number | null; version?: number | null };
     };
     assertEqual(current.branch?.name, "feat");
+    assertEqual(current.branch?.baseVersion, 1);
 
     await API.request({
         request: "b7",
@@ -321,7 +334,7 @@ Deno.test("version control: article history uses main branch", async () => {
 });
 
 Deno.test("version control: commit merges edit branch into main", async () => {
-    const { API, Branch, Article, Tag } = setup();
+    const { API, Branch, Commit, Article, Tag } = setup();
 
     await API.request({
         request: "m1",
@@ -395,6 +408,8 @@ Deno.test("version control: commit merges edit branch into main", async () => {
 
     const mergeHead = Branch._getHead({ branch: mainBranchId })[0]?.commit;
     assert(mergeHead);
+    const mergeCommit = Commit._get({ commit: mergeHead })[0];
+    assertEqual(mergeCommit?.version, 2);
 
     const mainArticleId = Article._getBySlug({
         branch: mainBranchId,
