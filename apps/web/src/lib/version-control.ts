@@ -7,6 +7,7 @@ export type VersionControlBranchStatus = "MAIN" | "IN_PROGRESS" | "COMMITTED";
 export type VersionControlBranch = {
   id: string;
   name: string;
+  label?: string | null;
   status: VersionControlBranchStatus;
   head?: string | null;
   isCurrent?: boolean;
@@ -84,13 +85,36 @@ export async function createBranch(
     fetcher = fetch,
     requestInit,
     name,
-  }: FetchOptions & { name: string },
-): Promise<{ ok: boolean; branch: { id: string; name: string } }> {
+    label,
+  }: FetchOptions & { name: string; label?: string },
+): Promise<{ ok: boolean; branch: { id: string; name: string; label?: string | null } }> {
   const url = new URL("/version-control/branches", baseUrl).toString();
+  const payload: Record<string, string> = { name };
+  if (typeof label === "string" && label.trim().length > 0) {
+    payload.label = label;
+  }
   return fetchJson(url, fetcher, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(payload),
+    ...requestInit,
+  });
+}
+
+export async function renameBranchLabel(
+  {
+    baseUrl = DEFAULT_API_BASE_URL,
+    fetcher = fetch,
+    requestInit,
+    name,
+    label,
+  }: FetchOptions & { name: string; label: string },
+): Promise<{ ok: boolean; branch: { id: string; name: string; label: string } }> {
+  const url = new URL(`/version-control/branches/${encodeURIComponent(name)}`, baseUrl).toString();
+  return fetchJson(url, fetcher, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label }),
     ...requestInit,
   });
 }

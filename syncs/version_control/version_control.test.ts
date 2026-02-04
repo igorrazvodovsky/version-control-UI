@@ -214,6 +214,7 @@ Deno.test("version control: branch list and change list", async () => {
     const branchOutput = branchList.output as {
         branches: {
             name: string;
+            label?: string | null;
             status: string;
             isCurrent: boolean;
             baseVersion?: number | null;
@@ -228,6 +229,8 @@ Deno.test("version control: branch list and change list", async () => {
     const featBranch = branchOutput.branches.find((branch) => branch.name === "feat");
     assertEqual(mainBranch?.version, 1);
     assertEqual(featBranch?.baseVersion, 1);
+    assertEqual(mainBranch?.label, "main");
+    assertEqual(featBranch?.label, "Feat");
 
     await API.request({
         request: "b6",
@@ -236,10 +239,11 @@ Deno.test("version control: branch list and change list", async () => {
         input: {},
     });
     const current = API._get({ request: "b6" })[0]?.output as {
-        branch?: { name: string; baseVersion?: number | null; version?: number | null };
+        branch?: { name: string; label?: string | null; baseVersion?: number | null; version?: number | null };
     };
     assertEqual(current.branch?.name, "feat");
     assertEqual(current.branch?.baseVersion, 1);
+    assertEqual(current.branch?.label, "Feat");
 
     await API.request({
         request: "b7",
@@ -250,11 +254,64 @@ Deno.test("version control: branch list and change list", async () => {
     const changesResponse = API._get({ request: "b7" })[0];
     assert(changesResponse);
     const changesOutput = changesResponse.output as {
+        branch?: { name: string; label?: string | null };
         changes: { slug: string; changeType: string }[];
     };
+    assertEqual(changesOutput.branch?.name, "feat");
+    assertEqual(changesOutput.branch?.label, "Feat");
     assertEqual(changesOutput.changes.length, 1);
     assertEqual(changesOutput.changes[0].slug, "hello");
     assertEqual(changesOutput.changes[0].changeType, "modified");
+});
+
+Deno.test("version control: rename branch label persists", async () => {
+    const { API, Branch } = setup();
+
+    await API.request({
+        request: "rb1",
+        method: "POST",
+        path: "/version-control/init",
+        input: {},
+    });
+
+    await API.request({
+        request: "rb2",
+        method: "POST",
+        path: "/version-control/branches",
+        input: { name: "feat" },
+    });
+
+    const featBranchId = Branch._getByName({ name: "feat" })[0]?.branch;
+    assert(featBranchId);
+
+    await API.request({
+        request: "rb3",
+        method: "PUT",
+        path: "/version-control/branches/:name",
+        input: { name: "feat", label: "Wrangle Sleepy Dragons (zzzz)" },
+    });
+
+    const renamed = Branch._get({ branch: featBranchId })[0];
+    assert(renamed);
+    assertEqual(renamed.label, "Wrangle Sleepy Dragons (zzzz)");
+
+    await API.request({
+        request: "rb4",
+        method: "GET",
+        path: "/version-control/branches",
+        input: {},
+    });
+
+    const branchList = API._get({ request: "rb4" })[0];
+    assert(branchList);
+    const branchOutput = branchList.output as {
+        branches: { name: string; label?: string | null }[];
+    };
+    const feat = branchOutput.branches.find((branch) => branch.name === "feat");
+    if (!feat) {
+        throw new Error("Expected feat branch in list");
+    }
+    assertEqual(feat.label, "Wrangle Sleepy Dragons (zzzz)");
 });
 
 Deno.test("version control: article history uses main branch", async () => {

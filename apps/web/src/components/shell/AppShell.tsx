@@ -24,6 +24,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Sidebar,
@@ -37,6 +47,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  SidebarFooter
 } from "@/components/ui/sidebar"
 import {
   Calculator,
@@ -52,9 +63,15 @@ import {
   Settings,
   Smile,
   User,
+  Bell,
+  HelpCircle,
+  LogOut,
+  Plus,
+  Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { navGroups, workspaceOptions } from "@/components/shell/nav"
+import { toast } from "@/hooks/use-toast"
 
 type AppShellProps = {
   children: React.ReactNode
@@ -85,6 +102,9 @@ function AppShellInner(
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   const [activeWorkspace, setActiveWorkspace] = useState(workspaceOptions[0] ?? "Workspace")
   const [commandOpen, setCommandOpen] = useState(false)
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [renameValue, setRenameValue] = useState("")
+  const [renameSaving, setRenameSaving] = useState(false)
   const hasRightSidebar = rightSidebar !== null && rightSidebar !== undefined
 
   const detail = useOptionalArticleDetail()
@@ -97,11 +117,42 @@ function AppShellInner(
     branches.find((branch) => branch.isCurrent) ??
     null
   const currentBranchName = currentBranch?.name ?? selectedBranch ?? "Master"
+  const currentBranchLabel = currentBranch?.label ?? currentBranchName
+  const canRenameTicket = isTicketContext && typeof selectedBranch === "string" && selectedBranch !== "main"
   const versionValue = currentBranch?.name === "main" ? currentBranch?.version : currentBranch?.baseVersion
   const versionLabel = typeof versionValue === "number" ? `v${versionValue}` : "v—"
   const contextLabel = !isTicketContext
     ? "Free Plan"
-    : (detail.branchesLoading ? "Loading tickets…" : `${currentBranchName} • ${versionLabel}`)
+    : (detail.branchesLoading ? "Loading tickets…" : `${currentBranchLabel} • ${versionLabel}`)
+
+  const openRenameDialog = () => {
+    if (!canRenameTicket) return
+    setRenameValue(currentBranch?.label ?? currentBranch?.name ?? selectedBranch ?? "")
+    setRenameDialogOpen(true)
+  }
+
+  const submitRename = async () => {
+    if (!detail || !canRenameTicket || !selectedBranch) return
+    const label = renameValue.trim()
+    if (!label) {
+      toast({
+        title: "Invalid name",
+        description: "Ticket name cannot be empty.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setRenameSaving(true)
+    try {
+      await detail.handleRenameBranchLabel(label)
+      setRenameDialogOpen(false)
+    } catch {
+      // Error toast handled upstream; keep dialog open.
+    } finally {
+      setRenameSaving(false)
+    }
+  }
 
   const shell = (
     <div className="flex h-screen bg-background">
@@ -142,13 +193,15 @@ function AppShellInner(
                             {workspace === activeWorkspace ? <Check className="size-4" /> : null}
                           </DropdownMenuItem>
 	                        ))}
+
 		                      </DropdownMenuSubContent>
 		                    </DropdownMenuSub>
+                        	                    <DropdownMenuSeparator />
 		                    {isTicketContext ? (
 		                      <DropdownMenuSub>
 		                        <DropdownMenuSubTrigger className="gap-2 p-2">
 		                          {/* <GitBranch className="size-4" /> */}
-		                          {currentBranchName}
+		                          {currentBranchLabel}
 		                        </DropdownMenuSubTrigger>
 		                        <DropdownMenuSubContent className="min-w-56">
 		                          {detail.branchesLoading && branches.length === 0 ? (
@@ -177,12 +230,12 @@ function AppShellInner(
 		                                otherBranches.map((branch) => {
 		                                  const version = typeof branch.baseVersion === "number" ? `v${branch.baseVersion}` : "v—"
 		                                  return (
-		                                    <DropdownMenuItem
+		                                  <DropdownMenuItem
 		                                      key={branch.id}
 		                                      onClick={() => detail?.handleBranchSelect(branch.name)}
 		                                      className="gap-2"
 		                                    >
-		                                      <span className="flex-1 truncate">{branch.name}</span>
+		                                      <span className="flex-1 truncate">{branch.label}</span>
 		                                      <span className="text-xs text-muted-foreground">{version}</span>
 		                                      {currentBranchName === branch.name ? <Check className="size-4" /> : null}
 		                                    </DropdownMenuItem>
@@ -203,14 +256,18 @@ function AppShellInner(
 		                        </DropdownMenuSubContent>
 		                      </DropdownMenuSub>
 		                    ) : null}
-	                    <DropdownMenuSeparator />
-                    {/* <DropdownMenuLabel className="text-xs text-muted-foreground">Domain</DropdownMenuLabel>
-                    <DropdownMenuItem className="gap-2 p-2">
+                      <DropdownMenuItem className="gap-2 p-2">
                         <div className="flex size-6 items-center justify-center rounded-sm border">
                           <span className="text-xs font-semibold">-</span>
                         </div>
-                        All
-                      </DropdownMenuItem> */}
+                        Changes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 p-2">
+                        <div className="flex size-6 items-center justify-center rounded-sm border">
+                          <span className="text-xs font-semibold">-</span>
+                        </div>
+                        Activity log
+                      </DropdownMenuItem>
                     {/* <DropdownMenuSeparator /> */}
                     {/* <DropdownMenuItem className="gap-2 p-2">
                       <div className="flex size-6 items-center justify-center rounded-md border border-dashed">
@@ -243,6 +300,73 @@ function AppShellInner(
               </SidebarGroup>
 	            ))}
 	          </SidebarContent>
+            <SidebarFooter>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton
+                        size="lg"
+                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                      >
+                        <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <Settings className="size-4" />
+                        </div>
+                        <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                          <span className="truncate font-semibold">Administration</span>
+                          {/* <span className="truncate text-xs text-muted-foreground">john@example.com</span> */}
+                        </div>
+                        <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
+                      side="top"
+                      align="start"
+                    >
+                      <DropdownMenuLabel className="p-0 font-normal">
+                        <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted">
+                            <User className="size-4" />
+                          </div>
+                          <div className="grid flex-1 text-left text-sm leading-tight">
+                            <span className="truncate font-semibold">John Doe</span>
+                            <span className="truncate text-xs text-muted-foreground">john@example.com</span>
+                          </div>
+                        </div>
+                      </DropdownMenuLabel>
+                      {/* TODO: Move to submenu */}
+                      {/* <DropdownMenuItem>
+                        <LogOut className="mr-2 size-4" />
+                        Log out
+                      </DropdownMenuItem> */}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Bell className="mr-2 size-4" />
+                        Notifications
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Settings className="mr-2 size-4" />
+                        Version and release management
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <User className="mr-2 size-4" />
+                        Jobs
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Settings className="mr-2 size-4" />
+                        Setup
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <HelpCircle className="mr-2 size-4" />
+                        Help
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarFooter>
 
 	        </Sidebar>
 

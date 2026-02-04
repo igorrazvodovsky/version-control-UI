@@ -13,6 +13,33 @@ const CURRENT_BRANCH_ID = "current:default";
 const DEFAULT_BRANCH_ID = "branch:main";
 const DEFAULT_BRANCH_NAME = "main";
 
+function titleCaseWords(input: string) {
+    return input
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => word.slice(0, 1).toUpperCase() + word.slice(1))
+        .join(" ");
+}
+
+function defaultBranchLabelFromName(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return "";
+    if (trimmed === DEFAULT_BRANCH_NAME) return DEFAULT_BRANCH_NAME;
+    if (/^t-\d+$/i.test(trimmed)) return trimmed.toUpperCase();
+
+    const cleaned = trimmed.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!cleaned) return trimmed;
+    const suffixMatch = cleaned.match(/^(.*)\s([a-z]{4})$/i);
+    if (!suffixMatch) {
+        return titleCaseWords(cleaned);
+    }
+
+    const [, base] = suffixMatch;
+    const trimmedBase = base.trim();
+    if (!trimmedBase) return titleCaseWords(cleaned);
+    return titleCaseWords(trimmedBase);
+}
+
 function errorOutput(message: string) {
     return { error: message };
 }
@@ -552,7 +579,7 @@ export function makeVersionControlArticleSyncs(
     Tag: TagConcept,
     TagSnapshot: TagSnapshotConcept,
 ) {
-    const InitBranchCreate = ({ request, branch, name }: Vars) => ({
+    const InitBranchCreate = ({ request, branch, name, label }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/init" }, { request }],
         ),
@@ -565,9 +592,10 @@ export function makeVersionControlArticleSyncs(
                     ...frame,
                     [branch]: DEFAULT_BRANCH_ID,
                     [name]: DEFAULT_BRANCH_NAME,
+                    [label]: DEFAULT_BRANCH_NAME,
                 }];
             }),
-        then: actions([Branch.create, { branch, name }]),
+        then: actions([Branch.create, { branch, name, label }]),
     });
 
     const InitBranchSetCurrent = ({ request, branch, output, code }: Vars) => ({
@@ -591,7 +619,7 @@ export function makeVersionControlArticleSyncs(
         ),
     });
 
-    const CreateBranch = ({ request, input, name, branch, baseVersion }: Vars) => ({
+    const CreateBranch = ({ request, input, name, label, branch, baseVersion }: Vars) => ({
         when: actions(
             [API.request, { method: "POST", path: "/version-control/branches", input }, {
                 request,
@@ -602,19 +630,54 @@ export function makeVersionControlArticleSyncs(
                 const payloadValue = asRecord(frame[input]);
                 const nameValue = getString(payloadValue, "name");
                 if (!nameValue) return [];
+                const labelValue = getString(payloadValue, "label") ??
+                    defaultBranchLabelFromName(nameValue);
+                if (!labelValue) return [];
                 const existing = Branch._getByName({ name: nameValue })[0]?.branch;
                 if (existing) return [];
                 const mainId = getMainBranchId(Branch);
                 const mainHead = mainId ? Branch._getHead({ branch: mainId })[0]?.commit : undefined;
                 const mainVersion = mainHead ? getCommitVersion(Commit, mainHead) : undefined;
+                if (typeof mainVersion !== "number") return [];
                 return [{
                     ...frame,
                     [name]: nameValue,
+                    [label]: labelValue,
                     [branch]: `branch:${crypto.randomUUID()}`,
                     [baseVersion]: mainVersion,
                 }];
             }),
-        then: actions([Branch.create, { branch, name, baseVersion }]),
+        then: actions([Branch.create, { branch, name, label, baseVersion }]),
+    });
+
+    const CreateBranchNoBaseVersion = ({ request, input, name, label, branch }: Vars) => ({
+        when: actions(
+            [API.request, { method: "POST", path: "/version-control/branches", input }, {
+                request,
+            }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                if (!nameValue) return [];
+                const labelValue = getString(payloadValue, "label") ??
+                    defaultBranchLabelFromName(nameValue);
+                if (!labelValue) return [];
+                const existing = Branch._getByName({ name: nameValue })[0]?.branch;
+                if (existing) return [];
+                const mainId = getMainBranchId(Branch);
+                const mainHead = mainId ? Branch._getHead({ branch: mainId })[0]?.commit : undefined;
+                const mainVersion = mainHead ? getCommitVersion(Commit, mainHead) : undefined;
+                if (typeof mainVersion === "number") return [];
+                return [{
+                    ...frame,
+                    [name]: nameValue,
+                    [label]: labelValue,
+                    [branch]: `branch:${crypto.randomUUID()}`,
+                }];
+            }),
+        then: actions([Branch.create, { branch, name, label }]),
     });
 
     const CreateBranchMissing = ({ request, input, output, code }: Vars) => ({
@@ -670,6 +733,8 @@ export function makeVersionControlArticleSyncs(
             frames.map((frame) => {
                 const payloadValue = asRecord(frame[input]);
                 const nameValue = getString(payloadValue, "name");
+                const labelValue = (getString(payloadValue, "label") ??
+                    (nameValue ? defaultBranchLabelFromName(nameValue) : undefined)) ?? null;
                 return {
                     ...frame,
                     [output]: {
@@ -677,6 +742,7 @@ export function makeVersionControlArticleSyncs(
                         branch: {
                             id: frame[branch],
                             name: nameValue,
+                            label: labelValue,
                         },
                     },
                     [code]: 201,
@@ -822,6 +888,121 @@ export function makeVersionControlArticleSyncs(
         then: actions([API.response, { request, output, code }]),
     });
 
+    const RenameBranchLabel = ({ request, input, name, label, branch, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "PUT",
+                path: "/version-control/branches/:name",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                const labelValue = getString(payloadValue, "label");
+                if (!nameValue || !labelValue) return [];
+                if (nameValue === DEFAULT_BRANCH_NAME) return [];
+                const branchId = Branch._getByName({ name: nameValue })[0]?.branch;
+                if (!branchId) return [];
+                return [{
+                    ...frame,
+                    [name]: nameValue,
+                    [label]: labelValue,
+                    [branch]: branchId,
+                    [output]: {
+                        ok: true,
+                        branch: { id: branchId, name: nameValue, label: labelValue },
+                    },
+                    [code]: 200,
+                }];
+            }),
+        then: actions(
+            [Branch.setLabel, { branch, label }],
+            [API.response, { request, output, code }],
+        ),
+    });
+
+    const RenameBranchLabelMissing = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "PUT",
+                path: "/version-control/branches/:name",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                if (!nameValue) {
+                    return [{
+                        ...frame,
+                        [output]: errorOutput("name required"),
+                        [code]: 422,
+                    }];
+                }
+                const labelValue = getString(payloadValue, "label");
+                if (labelValue) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("label required"),
+                    [code]: 422,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const RenameBranchLabelMain = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "PUT",
+                path: "/version-control/branches/:name",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                const labelValue = getString(payloadValue, "label");
+                if (!nameValue || !labelValue) return [];
+                if (nameValue !== DEFAULT_BRANCH_NAME) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("cannot rename main"),
+                    [code]: 409,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
+    const RenameBranchLabelNotFound = ({ request, input, output, code }: Vars) => ({
+        when: actions(
+            [API.request, {
+                method: "PUT",
+                path: "/version-control/branches/:name",
+                input,
+            }, { request }],
+        ),
+        where: (frames: Frames) =>
+            frames.flatMap((frame) => {
+                const payloadValue = asRecord(frame[input]);
+                const nameValue = getString(payloadValue, "name");
+                const labelValue = getString(payloadValue, "label");
+                if (!nameValue || !labelValue) return [];
+                if (nameValue === DEFAULT_BRANCH_NAME) return [];
+                const branchId = Branch._getByName({ name: nameValue })[0]?.branch;
+                if (branchId) return [];
+                return [{
+                    ...frame,
+                    [output]: errorOutput("branch not found"),
+                    [code]: 404,
+                }];
+            }),
+        then: actions([API.response, { request, output, code }]),
+    });
+
     const ListBranches = ({ request, output, code }: Vars) => ({
         when: actions(
             [API.request, { method: "GET", path: "/version-control/branches" }, { request }],
@@ -841,6 +1022,7 @@ export function makeVersionControlArticleSyncs(
                         return {
                             id: row?.branch,
                             name: row?.name,
+                            label: row?.label ?? null,
                             status: row?.status,
                             head: row?.head ?? null,
                             baseVersion: row?.baseVersion ?? null,
@@ -877,6 +1059,7 @@ export function makeVersionControlArticleSyncs(
                         branch: {
                             id: row.branch,
                             name: row.name,
+                            label: row.label ?? null,
                             status: row.status,
                             head: row.head ?? null,
                             baseVersion: row.baseVersion ?? null,
@@ -939,6 +1122,7 @@ export function makeVersionControlArticleSyncs(
                         branch: {
                             id: row.branch,
                             name: row.name,
+                            label: row.label ?? null,
                             status: row.status,
                             head: row.head ?? null,
                         },
@@ -2180,9 +2364,10 @@ export function makeVersionControlArticleSyncs(
     return {
         InitBranchCreate,
         InitBranchSetCurrent,
-        CreateBranch,
         CreateBranchMissing,
         CreateBranchExists,
+        CreateBranch,
+        CreateBranchNoBaseVersion,
         CreateBranchResponse,
         CloneBranchHeadOnCreate,
         CloneArticlesOnBranchCreate,
@@ -2190,6 +2375,10 @@ export function makeVersionControlArticleSyncs(
         SwitchBranch,
         SwitchBranchMissing,
         SwitchBranchNotFound,
+        RenameBranchLabel,
+        RenameBranchLabelMissing,
+        RenameBranchLabelMain,
+        RenameBranchLabelNotFound,
         ListBranches,
         GetCurrentBranch,
         GetCurrentBranchMissing,

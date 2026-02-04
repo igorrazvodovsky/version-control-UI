@@ -157,6 +157,7 @@ const routes: RouteDef[] = [
         template: "/version-control/branches",
         inputSchema: z.object({
             name: z.string().trim().min(1),
+            label: z.string().trim().min(1).optional(),
         }).passthrough(),
     },
     { method: "GET", template: "/version-control/branches" },
@@ -168,6 +169,14 @@ const routes: RouteDef[] = [
         }).passthrough(),
     },
     { method: "GET", template: "/version-control/branches/current" },
+    {
+        method: "PUT",
+        template: "/version-control/branches/:name",
+        inputSchema: z.object({
+            name: z.string().trim().min(1),
+            label: z.string().trim().min(1),
+        }).passthrough(),
+    },
     {
         method: "GET",
         template: "/version-control/branches/:name/changes",

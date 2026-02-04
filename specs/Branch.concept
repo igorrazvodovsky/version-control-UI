@@ -8,20 +8,27 @@ purpose
 state
     a set of Branches with
         a name String
+        a label String
         an optional head Commits
         an optional baseVersion Number
         a status String
         a createdAt DateTime
 
 actions
-    create (branch: Branches, name: String) : (branch: Branches)
-        add branch with name and timestamp
+    create (branch: Branches, name: String, label: String) : (branch: Branches)
+        add branch with name, label, and timestamp
         return branch
-    create (branch: Branches, name: String, baseVersion: Number) : (branch: Branches)
-        add branch with name, base version, and timestamp
+    create (branch: Branches, name: String, label: String, baseVersion: Number) : (branch: Branches)
+        add branch with name, label, base version, and timestamp
         return branch
-    create (branch: Branches, name: String) : (error: String)
-        if name is not unique or invalid, return error
+    create (branch: Branches, name: String, label: String) : (error: String)
+        if name is not unique or invalid, or label invalid, return error
+
+    setLabel (branch: Branches, label: String) : (branch: Branches)
+        update label for branch
+        return branch
+    setLabel (branch: Branches, label: String) : (error: String)
+        if branch does not exist or label invalid, return error
 
     setHead (branch: Branches, commit: Commits) : (branch: Branches)
         update head for branch
@@ -36,7 +43,7 @@ actions
         if branch does not exist, return error
 
 queries
-    _get (branch: Branches) : (branch: Branches, name: String, head: Commits, baseVersion: Number, status: String)
+    _get (branch: Branches) : (branch: Branches, name: String, label: String, head: Commits, baseVersion: Number, status: String)
         fetch branch
     _getByName (name: String) : (branch: Branches)
         lookup branch by name

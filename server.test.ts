@@ -33,6 +33,27 @@ Deno.test("http adapter: app + version control", async () => {
     assertEqual(initBody.ok, true);
     assertEqual(typeof initBody.branch, "string");
 
+    const createBranchRes = await handleRequest(
+        new Request("http://localhost/version-control/branches", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: "feat" }),
+        }),
+    );
+    assertEqual(createBranchRes.status, 201);
+
+    const switchRes = await handleRequest(
+        new Request("http://localhost/version-control/branches/current", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: "feat" }),
+        }),
+    );
+    assertEqual(switchRes.status, 200);
+    const switchBody = await switchRes.json() as { ok?: boolean; branch?: string };
+    assertEqual(switchBody.ok, true);
+    assertEqual(switchBody.branch, "feat");
+
     const missingRes = await handleRequest(
         new Request("http://localhost/unknown", { method: "GET" }),
     );

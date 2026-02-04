@@ -3,6 +3,7 @@ export class BranchConcept {
         string,
         {
             name: string;
+            label: string;
             head?: string;
             baseVersion?: number;
             status: "MAIN" | "IN_PROGRESS" | "COMMITTED";
@@ -11,10 +12,21 @@ export class BranchConcept {
     >();
     private byName = new Map<string, string>();
 
-    create({ branch, name, baseVersion }: { branch: string; name: string; baseVersion?: number }) {
+    create(
+        { branch, name, label, baseVersion }: {
+            branch: string;
+            name: string;
+            label: string;
+            baseVersion?: number;
+        },
+    ) {
         const trimmedName = name.trim();
         if (!trimmedName) {
             return { error: "name required" };
+        }
+        const trimmedLabel = label.trim();
+        if (!trimmedLabel) {
+            return { error: "label required" };
         }
         if (baseVersion !== undefined && Number.isNaN(baseVersion)) {
             return { error: "baseVersion must be a number" };
@@ -29,11 +41,25 @@ export class BranchConcept {
         const status = trimmedName === "main" ? "MAIN" : "IN_PROGRESS";
         this.branches.set(branch, {
             name: trimmedName,
+            label: trimmedLabel,
             createdAt: now,
             status,
             baseVersion,
         });
         this.byName.set(trimmedName, branch);
+        return { branch };
+    }
+
+    setLabel({ branch, label }: { branch: string; label: string }) {
+        const existing = this.branches.get(branch);
+        if (!existing) {
+            return { error: "branch not found" };
+        }
+        const trimmedLabel = label.trim();
+        if (!trimmedLabel) {
+            return { error: "label required" };
+        }
+        existing.label = trimmedLabel;
         return { branch };
     }
 
@@ -64,6 +90,7 @@ export class BranchConcept {
     _get({ branch }: { branch: string }): {
         branch: string;
         name: string;
+        label: string;
         head: string | undefined;
         baseVersion: number | undefined;
         status: string;
@@ -73,6 +100,7 @@ export class BranchConcept {
         return [{
             branch,
             name: existing.name,
+            label: existing.label,
             head: existing.head,
             baseVersion: existing.baseVersion,
             status: existing.status,

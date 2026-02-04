@@ -24,10 +24,12 @@ import {
   fetchBranchChanges,
   fetchBranches,
   fetchCurrentBranch,
+  renameBranchLabel,
   switchBranch,
   type BranchChange,
   type VersionControlBranch,
 } from "@/lib/version-control"
+import { generateDefaultBranch, getNextBranchSequence } from "@/lib/branch-names"
 
 const AUTOSAVE_DELAY_MS = 1200
 const DEFAULT_HISTORY_LIMIT = 20
@@ -64,6 +66,7 @@ type ArticleDetailContextValue = {
   handleSaveCommit: () => Promise<void>
   handleDiscard: () => Promise<void>
   handleCreateBranch: () => Promise<void>
+  handleRenameBranchLabel: (label: string) => Promise<void>
 }
 
 type ArticleDetailProviderProps = {
@@ -244,13 +247,7 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
     loadBranchChanges(selectedBranch)
   }, [loadBranchChanges, selectedBranch])
 
-  const generateBranchName = () => {
-    const timestamp = Date.now().toString()
-    const token = Math.floor(Math.random() * 1e6)
-      .toString()
-      .padStart(6, "0")
-    return `T-${timestamp}-${token}`
-  }
+  const generateBranchCandidate = (sequence: number) => generateDefaultBranch(sequence)
 
   const ensureEditBranch = useCallback(async () => {
     if (activeEditBranchRef.current && activeEditBranchRef.current !== "main") {
@@ -274,12 +271,15 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
         return reusableBranch.name
       }
 
+      let nextSequence = snapshot
+        ? getNextBranchSequence(snapshot.branches.map((branch) => branch.name))
+        : 1
       let createdName = ""
       for (let attempt = 0; attempt < MAX_BRANCH_CREATION_ATTEMPTS; attempt += 1) {
-        const candidate = generateBranchName()
+        const candidate = generateBranchCandidate(nextSequence)
         try {
-          await createBranch({ baseUrl: apiBaseUrl, name: candidate })
-          createdName = candidate
+          await createBranch({ baseUrl: apiBaseUrl, name: candidate.name, label: candidate.label })
+          createdName = candidate.name
           break
         } catch (err) {
           const message = err instanceof Error ? err.message : "Unable to create branch."
@@ -295,6 +295,12 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
             setSelectedBranch(fallback.name)
             activeEditBranchRef.current = fallback.name
             return fallback.name
+          }
+          if (refreshed) {
+            const refreshedNext = getNextBranchSequence(refreshed.branches.map((branch) => branch.name))
+            nextSequence = Math.max(refreshedNext, nextSequence + 1)
+          } else {
+            nextSequence += 1
           }
         }
       }
@@ -491,6 +497,53 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
     }
   }
 
+  const handleRenameBranchLabel = async (nextLabel: string) => {
+    const branchName = selectedBranch
+    if (!branchName) {
+      toast({
+        title: "Rename unavailable",
+        description: "No active ticket branch selected.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (branchName === "main") {
+      toast({
+        title: "Rename unavailable",
+        description: "Main cannot be renamed.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const label = nextLabel.trim()
+    if (!label) {
+      toast({
+        title: "Invalid name",
+        description: "Ticket name cannot be empty.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      await renameBranchLabel({ baseUrl: apiBaseUrl, name: branchName, label })
+      await loadBranches()
+      toast({
+        title: "Ticket renamed",
+        description: "Updated the ticket name.",
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to rename ticket."
+      toast({
+        title: "Rename failed",
+        description: message,
+        variant: "destructive",
+      })
+      throw err
+    }
+  }
+
   const statusLabel = (() => {
     if (saveStatus === "saving") return "Saving…"
     if (saveStatus === "error") return "Not saved"
@@ -521,6 +574,7 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
     handleSaveCommit,
     handleDiscard,
     handleCreateBranch,
+    handleRenameBranchLabel,
   }
 
   return <ArticleDetailContext.Provider value={value}>{children}</ArticleDetailContext.Provider>
