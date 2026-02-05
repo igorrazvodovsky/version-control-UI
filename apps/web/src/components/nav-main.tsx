@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 
 import {
   Collapsible,
@@ -18,20 +18,12 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+import type { NavMainItem } from "@/components/shell/nav"
 
 export function NavMain({
   items,
 }: {
-  items: {
-    title: string
-    url: string
-    icon: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
+  items: NavMainItem[]
 }) {
   return (
     <SidebarGroup>

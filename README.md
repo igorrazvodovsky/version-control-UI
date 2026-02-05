@@ -104,6 +104,10 @@ Start the backend (from repo root):
 deno run -A server.ts
 ```
 
+Local persistence (when running `server.ts` as the main module): the backend
+stores state in Deno KV at `tmp/app-state.kv`. Override with `APP_KV_PATH`.
+Delete `tmp/app-state.kv*` to reset.
+
 Start the frontend (from `apps/web/`), choose one:
 
 ```

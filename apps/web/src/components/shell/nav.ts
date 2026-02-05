@@ -1,5 +1,22 @@
 import type { LucideIcon } from "lucide-react"
-import { BarChart, Calendar, FileText, Home, Inbox, Search, Settings, Users, GitBranch, Package, Layers, Tag, Shield, Plug, Library, Smile } from "lucide-react"
+import {
+  BookOpen,
+  Bot,
+  Frame,
+  GitBranch,
+  Library,
+  LifeBuoy,
+  Map,
+  Package,
+  PieChart,
+  Plug,
+  Send,
+  Settings2,
+  Shield,
+  Smile,
+  SquareTerminal,
+  Tag,
+} from "lucide-react"
 
 type NavItem = {
   label: string
@@ -19,120 +36,867 @@ type NavGroup = {
   }[]
 }
 
+type NavMainItem = {
+  title: string
+  url: string
+  icon: LucideIcon
+  isActive?: boolean
+  items?: {
+    title: string
+    url: string
+  }[]
+}
+
+type NavSecondaryItem = {
+  title: string
+  url: string
+  icon: LucideIcon
+}
+
+type NavProjectItem = {
+  name: string
+  url: string
+  icon: LucideIcon
+}
+
+type NavUser = {
+  name: string
+  email: string
+  avatar: string
+}
+
+type NavDemoData = {
+  user: NavUser
+  navMain: NavMainItem[]
+  navSecondary: NavSecondaryItem[]
+  projects: NavProjectItem[]
+}
+
+type NavTreeAttributeDomainOption = {
+  key: string
+  label: string
+}
+
+type NavTreeAttribute = {
+  id: string
+  name: string
+  dataType: "number" | "enum" | "boolean" | "string"
+  unit?: string
+  domain?: NavTreeAttributeDomainOption[]
+  default?: number | string | boolean
+}
+
+type NavTreePart = {
+  id: string
+  partNumber: string
+  name: string
+  qty: number
+  uom: string
+}
+
+type NavTreePositionOccurrence = {
+  occurrenceId: string
+  selectedVariant: string
+  children?: NavTreeItem[]
+}
+
+type NavTreeNodeBase = {
+  id: string
+  name: string
+  type: string
+  updatedAt?: string
+  attributes?: NavTreeAttribute[]
+  parts?: NavTreePart[]
+  children?: NavTreeItem[]
+}
+
+type NavTreePosition = NavTreeNodeBase & {
+  type: "Position"
+  minOccurs: number
+  maxOccurs: number
+  allowedVariants?: string[]
+  selectedVariant?: string
+  occurrences?: NavTreePositionOccurrence[]
+}
+
+type NavTreeAssembly = NavTreeNodeBase & {
+  type: "Assembly"
+  quantity: number
+  positions?: NavTreePosition[]
+}
+
+type NavTreeModuleVariant = NavTreeNodeBase & {
+  type: "ModuleVariant"
+}
+
+type NavTreeAssemblyVariant = NavTreeNodeBase & {
+  type: "AssemblyVariant"
+  positions?: NavTreePosition[]
+}
+
+type NavTreeProductModel = {
+  id: string
+  name: string
+  type: "ProductModel"
+  updatedAt?: string
+  metadata: {
+    version: string
+    currency: string
+    uomSystem: string
+  }
+  attributes?: NavTreeAttribute[]
+  rootAssembly: NavTreeAssembly
+}
+
+type NavTreeItem =
+  | NavTreeProductModel
+  | NavTreeAssembly
+  | NavTreePosition
+  | NavTreeModuleVariant
+  | NavTreeAssemblyVariant
+
+type NavChangeItem = {
+  file: string
+  state: string
+}
+
 const workspaceOptions = ["All channels", "Direct sales", "Partner A", "Partner B"]
 
 const navGroups = [
+  {
+    title: "Business process",
+    url: "#",
+    icon: GitBranch,
+    isActive: true,
+    items: [
+      {
+        title: "Entities",
+        url: "#",
+      },
+      {
+        title: "Lifecycle",
+        url: "#",
+      },
+    ],
+  },
+  {
+    title: "Catalog",
+    url: "#",
+    icon: Package,
+    items: [
+      {
+        title: "Products",
+        url: "#",
+      },
+      {
+        title: "Services",
+        url: "#",
+      },
+    ],
+  },
+  {
+    title: "Pricing",
+    url: "#",
+    icon: Tag,
+    items: [
+      {
+        title: "Price models",
+        url: "#",
+      },
+      {
+        title: "Subscriptions",
+        url: "#",
+      },
+    ],
+  },
+  {
+    title: "Governance",
+    url: "#",
+    icon: Shield,
+    items: [
+      {
+        title: "Roles",
+        url: "#",
+      },
+      {
+        title: "Organizations",
+        url: "#",
+      },
+    ],
+  },
+  {
+    title: "Integration",
+    url: "#",
+    icon: Plug,
+    items: [
+      {
+        title: "Price models",
+        url: "#",
+      },
+      {
+        title: "Subscriptions",
+        url: "#",
+      },
+    ],
+  },
+  {
+    title: "Experience",
+    url: "#",
+    icon: Smile,
+    items: [
+      {
+        title: "Editors",
+        url: "#",
+      },
+      {
+        title: "Configurator",
+        url: "#",
+      },
+      {
+        title: "Branding",
+        url: "#",
+      },
+      {
+        title: "Languages and Localization",
+        url: "#",
+      },
+    ],
+  },
+  {
+    title: "Reference data",
+    url: "#",
+    icon: Library,
+    items: [
+      {
+        title: "...",
+        url: "#",
+      },
+    ],
+  },
+]
+
+const navMockData: NavDemoData = {
+  user: {
+    name: "shadcn",
+    email: "m@example.com",
+    avatar: "/avatars/shadcn.jpg",
+  },
+  navMain: [
     {
-      title: "Business process",
+      title: "Playground",
       url: "#",
-      icon: GitBranch,
+      icon: SquareTerminal,
       isActive: true,
       items: [
         {
-          title: "Entities",
+          title: "History",
           url: "#",
         },
         {
-          title: "Lifecycle",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Catalog",
-      url: "#",
-      icon: Package,
-      items: [
-        {
-          title: "Products",
+          title: "Starred",
           url: "#",
         },
         {
-          title: "Services",
-          url: "#",
-        }
-      ],
-    },
-    {
-      title: "Pricing",
-      url: "#",
-      icon: Tag,
-      items: [
-        {
-          title: "Price models",
-          url: "#",
-        },
-        {
-          title: "Subscriptions",
+          title: "Settings",
           url: "#",
         },
       ],
     },
     {
-      title: "Governance",
+      title: "Models",
       url: "#",
-      icon: Shield,
+      icon: Bot,
       items: [
         {
-          title: "Roles",
+          title: "Genesis",
           url: "#",
         },
         {
-          title: "Organizations",
-          url: "#",
-        }
-      ],
-    },
-    {
-      title: "Integration",
-      url: "#",
-      icon: Plug,
-      items: [
-        {
-          title: "Price models",
+          title: "Explorer",
           url: "#",
         },
         {
-          title: "Subscriptions",
+          title: "Quantum",
           url: "#",
         },
       ],
     },
     {
-      title: "Experience",
+      title: "Documentation",
       url: "#",
-      icon: Smile,
+      icon: BookOpen,
       items: [
         {
-          title: "Editors",
+          title: "Introduction",
           url: "#",
         },
         {
-          title: "Configurator",
+          title: "Get Started",
           url: "#",
         },
         {
-          title: "Branding",
+          title: "Tutorials",
           url: "#",
         },
         {
-          title: "Languages and Localization",
+          title: "Changelog",
           url: "#",
-        }
+        },
       ],
     },
     {
-      title: "Reference data",
+      title: "Settings",
       url: "#",
-      icon: Library,
+      icon: Settings2,
       items: [
         {
-          title: "...",
+          title: "General",
           url: "#",
-        }
+        },
+        {
+          title: "Team",
+          url: "#",
+        },
+        {
+          title: "Billing",
+          url: "#",
+        },
+        {
+          title: "Limits",
+          url: "#",
+        },
       ],
-    }
-  ]
+    },
+  ],
+  navSecondary: [
+    {
+      title: "Support",
+      url: "#",
+      icon: LifeBuoy,
+    },
+    {
+      title: "Feedback",
+      url: "#",
+      icon: Send,
+    },
+  ],
+  projects: [
+    {
+      name: "Design Engineering",
+      url: "#",
+      icon: Frame,
+    },
+    {
+      name: "Sales & Marketing",
+      url: "#",
+      icon: PieChart,
+    },
+    {
+      name: "Travel",
+      url: "#",
+      icon: Map,
+    },
+  ],
+}
 
-export { navGroups, workspaceOptions }
-export type { NavGroup, NavItem }
+const navMockChanges: NavChangeItem[] = [
+  {
+    file: "README.md",
+    state: "M",
+  },
+  {
+    file: "api/hello/route.ts",
+    state: "U",
+  },
+  {
+    file: "app/layout.tsx",
+    state: "M",
+  },
+]
+
+const navMockTree: NavTreeItem[] = [
+   {
+    "id": "PM-1000",
+    "name": "Industrial Pump System",
+    "type": "ProductModel",
+    "updatedAt": "2026-02-04T18:30:00Z",
+    "metadata": {
+      "version": "1.0",
+      "currency": "EUR",
+      "uomSystem": "metric"
+    },
+    "attributes": [
+      {
+        "id": "A-PROD-002",
+        "name": "TargetFlowRateLpm",
+        "dataType": "number",
+        "unit": "L/min",
+        "default": 1200
+      }
+    ],
+    "rootAssembly": {
+      "id": "AS-ROOT-1000",
+      "name": "PumpSystem",
+      "type": "Assembly",
+      "updatedAt": "2026-02-04T21:45:00Z",
+      "quantity": 1,
+      "attributes": [
+        {
+          "id": "A-AS-001",
+          "name": "SystemVoltage",
+          "dataType": "enum",
+          "domain": [
+            { "key": "400V_3PH", "label": "400V 3-Phase" },
+            { "key": "480V_3PH", "label": "480V 3-Phase" }
+          ],
+          "default": "400V_3PH"
+        }
+      ],
+      "positions": [
+        {
+          "id": "POS-1100",
+          "name": "PumpModule",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 1,
+          "allowedVariants": ["MOD-PUMP-STD", "MOD-PUMP-HIGHPRESS"],
+          "selectedVariant": "MOD-PUMP-STD",
+          "children": [
+            {
+              "id": "MOD-PUMP-STD",
+              "name": "Pump Module - Standard",
+              "type": "ModuleVariant",
+              "updatedAt": "2026-02-04T22:40:00Z",
+              "attributes": [
+                {
+                  "id": "A-PUMP-001",
+                  "name": "ImpellerDiameterMm",
+                  "dataType": "number",
+                  "unit": "mm",
+                  "default": 180
+                },
+                {
+                  "id": "A-PUMP-002",
+                  "name": "SealType",
+                  "dataType": "enum",
+                  "domain": [
+                    { "key": "MECH", "label": "Mechanical" },
+                    { "key": "PACK", "label": "Packing" }
+                  ],
+                  "default": "MECH"
+                }
+              ],
+              "parts": [
+                {
+                  "id": "PART-1001",
+                  "partNumber": "PMP-BASE-01",
+                  "name": "Pump Base Casting",
+                  "qty": 1,
+                  "uom": "EA"
+                },
+                {
+                  "id": "PART-1002",
+                  "partNumber": "IMP-180-SS",
+                  "name": "Impeller 180mm Stainless",
+                  "qty": 1,
+                  "uom": "EA"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "POS-1200",
+          "name": "MotorModule",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 1,
+          "allowedVariants": ["MOD-MOTOR-15KW", "MOD-MOTOR-22KW"],
+          "selectedVariant": "MOD-MOTOR-15KW",
+          "children": [
+            {
+              "id": "MOD-MOTOR-15KW",
+              "name": "Motor Module - 15kW",
+              "type": "ModuleVariant",
+              "attributes": [
+                {
+                  "id": "A-MOTOR-001",
+                  "name": "PowerKw",
+                  "dataType": "number",
+                  "unit": "kW",
+                  "default": 15
+                },
+                {
+                  "id": "A-MOTOR-002",
+                  "name": "EfficiencyClass",
+                  "dataType": "enum",
+                  "domain": [
+                    { "key": "IE3", "label": "IE3" },
+                    { "key": "IE4", "label": "IE4" }
+                  ],
+                  "default": "IE3"
+                }
+              ],
+              "parts": [
+                {
+                  "id": "PART-2001",
+                  "partNumber": "MTR-15KW-IE3",
+                  "name": "Electric Motor 15kW IE3",
+                  "qty": 1,
+                  "uom": "EA"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "POS-1300",
+          "name": "ControlPanelAssembly",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 1,
+          "allowedVariants": ["AS-CTRL-BASIC", "AS-CTRL-ADV"],
+          "selectedVariant": "AS-CTRL-BASIC",
+          "children": [
+            {
+              "id": "AS-CTRL-BASIC",
+              "name": "Control Panel - Basic",
+              "type": "AssemblyVariant",
+              "attributes": [
+                {
+                  "id": "A-CTRL-001",
+                  "name": "HasSoftStarter",
+                  "dataType": "boolean",
+                  "default": true
+                }
+              ],
+              "positions": [
+                {
+                  "id": "POS-1310",
+                  "name": "HMI",
+                  "type": "Position",
+                  "minOccurs": 0,
+                  "maxOccurs": 1,
+                  "allowedVariants": ["MOD-HMI-7IN", "MOD-HMI-10IN"],
+                  "selectedVariant": "MOD-HMI-7IN",
+                  "children": [
+                    {
+                      "id": "MOD-HMI-7IN",
+                      "name": "HMI 7-inch Touch",
+                      "type": "ModuleVariant",
+                      "attributes": [
+                        {
+                          "id": "A-HMI-001",
+                          "name": "ScreenSizeIn",
+                          "dataType": "number",
+                          "unit": "in",
+                          "default": 7
+                        }
+                      ],
+                      "parts": [
+                        {
+                          "id": "PART-3001",
+                          "partNumber": "HMI-7T-01",
+                          "name": "Touch HMI 7-inch",
+                          "qty": 1,
+                          "uom": "EA"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "POS-1320",
+                  "name": "Sensors",
+                  "type": "Position",
+                  "updatedAt": "2026-02-04T22:10:00Z",
+                  "minOccurs": 1,
+                  "maxOccurs": 5,
+                  "occurrences": [
+                    {
+                      "occurrenceId": "POS-1320-1",
+                      "selectedVariant": "MOD-SENS-PRESS",
+                      "children": [
+                        {
+                          "id": "MOD-SENS-PRESS",
+                          "name": "Pressure Sensor",
+                          "type": "ModuleVariant",
+                          "attributes": [
+                            {
+                              "id": "A-SENS-001",
+                              "name": "RangeBar",
+                              "dataType": "number",
+                              "unit": "bar",
+                              "default": 10
+                            }
+                          ],
+                          "parts": [
+                            {
+                              "id": "PART-3101",
+                              "partNumber": "SENS-P-10B",
+                              "name": "Pressure Sensor 0-10 bar",
+                              "qty": 1,
+                              "uom": "EA"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "occurrenceId": "POS-1320-2",
+                      "selectedVariant": "MOD-SENS-FLOW",
+                      "children": [
+                        {
+                          "id": "MOD-SENS-FLOW",
+                          "name": "Flow Sensor",
+                          "type": "ModuleVariant",
+                          "attributes": [
+                            {
+                              "id": "A-SENS-002",
+                              "name": "MaxFlowLpm",
+                              "dataType": "number",
+                              "unit": "L/min",
+                              "default": 2000
+                            }
+                          ],
+                          "parts": [
+                            {
+                              "id": "PART-3102",
+                              "partNumber": "SENS-F-2K",
+                              "name": "Flow Sensor up to 2000 L/min",
+                              "qty": 1,
+                              "uom": "EA"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "parts": [
+                {
+                  "id": "PART-3050",
+                  "partNumber": "PANEL-ENC-01",
+                  "name": "Control Panel Enclosure",
+                  "qty": 1,
+                  "uom": "EA"
+                },
+                {
+                  "id": "PART-3051",
+                  "partNumber": "SOFT-START-01",
+                  "name": "Soft Starter Unit",
+                  "qty": 1,
+                  "uom": "EA"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "PM-2000",
+    "name": "Automated Conveyor Cell",
+    "type": "ProductModel",
+    "updatedAt": "2026-02-04T22:55:00Z",
+    "metadata": {
+      "version": "2.1",
+      "currency": "USD",
+      "uomSystem": "imperial"
+    },
+    "attributes": [
+      {
+        "id": "A-PROD-201",
+        "name": "ThroughputUnitsPerHour",
+        "dataType": "number",
+        "unit": "units/h",
+        "default": 480
+      }
+    ],
+    "rootAssembly": {
+      "id": "AS-ROOT-2000",
+      "name": "ConveyorCell",
+      "type": "Assembly",
+      "updatedAt": "2026-02-04T21:10:00Z",
+      "quantity": 1,
+      "attributes": [
+        {
+          "id": "A-AS-201",
+          "name": "BeltWidthIn",
+          "dataType": "number",
+          "unit": "in",
+          "default": 24
+        }
+      ],
+      "positions": [
+        {
+          "id": "POS-2100",
+          "name": "DriveModule",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 1,
+          "allowedVariants": ["MOD-DRIVE-STD", "MOD-DRIVE-HD"],
+          "selectedVariant": "MOD-DRIVE-STD",
+          "children": [
+            {
+              "id": "MOD-DRIVE-STD",
+              "name": "Drive Module - Standard",
+              "type": "ModuleVariant",
+              "updatedAt": "2026-02-04T20:30:00Z",
+              "attributes": [
+                {
+                  "id": "A-DRV-001",
+                  "name": "MotorPowerHp",
+                  "dataType": "number",
+                  "unit": "hp",
+                  "default": 5
+                }
+              ],
+              "parts": [
+                {
+                  "id": "PART-2101",
+                  "partNumber": "DRV-5HP-STD",
+                  "name": "Drive Motor 5hp",
+                  "qty": 1,
+                  "uom": "EA"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "POS-2200",
+          "name": "ControlPanel",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 1,
+          "allowedVariants": ["AS-CTRL-PLC"],
+          "selectedVariant": "AS-CTRL-PLC",
+          "children": [
+            {
+              "id": "AS-CTRL-PLC",
+              "name": "PLC Control Panel",
+              "type": "AssemblyVariant",
+              "attributes": [
+                {
+                  "id": "A-PLC-001",
+                  "name": "ControllerFamily",
+                  "dataType": "enum",
+                  "domain": [
+                    { "key": "S7-1200", "label": "S7-1200" },
+                    { "key": "S7-1500", "label": "S7-1500" }
+                  ],
+                  "default": "S7-1200"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "PM-3000",
+    "name": "Packaging Robot Workcell",
+    "type": "ProductModel",
+    "updatedAt": "2026-02-04T23:50:00Z",
+    "metadata": {
+      "version": "3.0",
+      "currency": "EUR",
+      "uomSystem": "metric"
+    },
+    "attributes": [
+      {
+        "id": "A-PROD-301",
+        "name": "PayloadKg",
+        "dataType": "number",
+        "unit": "kg",
+        "default": 12
+      }
+    ],
+    "rootAssembly": {
+      "id": "AS-ROOT-3000",
+      "name": "RobotCell",
+      "type": "Assembly",
+      "updatedAt": "2026-02-04T23:10:00Z",
+      "quantity": 1,
+      "positions": [
+        {
+          "id": "POS-3100",
+          "name": "RobotArm",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 1,
+          "allowedVariants": ["MOD-ARM-6AX"],
+          "selectedVariant": "MOD-ARM-6AX",
+          "children": [
+                {
+                  "id": "MOD-ARM-6AX",
+                  "name": "6-Axis Robot Arm",
+                  "type": "ModuleVariant",
+                  "updatedAt": "2026-02-04T23:20:00Z",
+                  "attributes": [
+                    {
+                      "id": "A-ARM-001",
+                      "name": "ReachMm",
+                  "dataType": "number",
+                  "unit": "mm",
+                  "default": 1600
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "POS-3200",
+          "name": "Gripper",
+          "type": "Position",
+          "minOccurs": 1,
+          "maxOccurs": 2,
+          "occurrences": [
+            {
+              "occurrenceId": "POS-3200-1",
+              "selectedVariant": "MOD-GRP-VAC",
+              "children": [
+                {
+                  "id": "MOD-GRP-VAC",
+                  "name": "Vacuum Gripper",
+                  "type": "ModuleVariant",
+                  "updatedAt": "2026-02-04T23:35:00Z",
+                  "attributes": [
+                    {
+                      "id": "A-GRP-001",
+                      "name": "CupCount",
+                      "dataType": "number",
+                      "default": 8
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+
+export {
+  navGroups,
+  navMockChanges,
+  navMockData,
+  navMockTree,
+  workspaceOptions,
+}
+export type {
+  NavChangeItem,
+  NavDemoData,
+  NavGroup,
+  NavItem,
+  NavMainItem,
+  NavProjectItem,
+  NavSecondaryItem,
+  NavTreeItem,
+}

@@ -1,8 +1,38 @@
 import { Application, Router } from "jsr:@oak/oak";
 import { z } from "npm:zod";
 import { createApp } from "./app.ts";
+import { saveAppStateToKv } from "./persistence/app_state_kv.ts";
 
-const appPromise = createApp();
+const kvPath = import.meta.main
+    ? (Deno.env.get("APP_KV_PATH") ?? "tmp/app-state.kv")
+    : undefined;
+
+const kv = kvPath ? await Deno.openKv(kvPath) : undefined;
+
+const appPromise = createApp({ kv });
+
+let persistQueue: Promise<void> = Promise.resolve();
+
+function shouldPersist(method: string) {
+    const upper = method.toUpperCase();
+    return upper === "POST" || upper === "PUT" || upper === "DELETE";
+}
+
+function queuePersist(app: Awaited<typeof appPromise>) {
+    if (!kv) return Promise.resolve();
+    persistQueue = persistQueue
+        .then(async () => {
+            await saveAppStateToKv(kv, app);
+        })
+        .catch((error) => {
+            if (kvPath) {
+                console.warn(`Failed to persist app state to Deno KV at ${kvPath}.`, error);
+            } else {
+                console.warn("Failed to persist app state.", error);
+            }
+        });
+    return persistQueue;
+}
 
 type RouteDef = {
     method: string;
@@ -334,7 +364,8 @@ async function handleRoute(
     route: RouteDef,
 ) {
     const input = await buildInput(ctx, route);
-    const { API } = await appPromise;
+    const app = await appPromise;
+    const { API } = app;
     const requestId = crypto.randomUUID();
     await API.request({
         request: requestId,
@@ -354,6 +385,10 @@ async function handleRoute(
     ctx.response.status = stored.code || 200;
     ctx.response.type = "json";
     ctx.response.body = stored.output ?? {};
+
+    if (shouldPersist(ctx.request.method)) {
+        await queuePersist(app);
+    }
 }
 
 function registerRoute(router: Router, route: RouteDef) {
