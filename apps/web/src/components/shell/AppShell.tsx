@@ -68,6 +68,8 @@ import {
   LogOut,
   Plus,
   Pencil,
+  PanelRightOpen,
+  PanelRightClose
 } from "lucide-react"
 import { DEFAULT_API_BASE_URL } from "@/lib/articles"
 import { cn } from "@/lib/utils"
@@ -516,7 +518,7 @@ function AppShellInner(
                   onClick={() => setRightSidebarOpen((open) => !open)}
                   className="h-8 w-8"
                 >
-                  {rightSidebarOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  {rightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                   <span className="sr-only">{rightSidebarOpen ? "Collapse details" : "Expand details"}</span>
                 </Button>
               )}
