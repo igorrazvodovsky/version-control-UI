@@ -6,6 +6,9 @@ import { ChevronRight, Clock, File, Folder, Layers, FolderTree } from "lucide-re
 import type { NavTreeItem } from "@/components/shell/nav"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -29,9 +32,9 @@ function formatRelativeTime(isoString: string): string {
   const deltaDays = Math.round(deltaHours / 24)
 
   if (Math.abs(deltaSeconds) < 60) return "just now"
-  if (Math.abs(deltaMinutes) < 60) return `${deltaMinutes}m ago`
-  if (Math.abs(deltaHours) < 24) return `${deltaHours}h ago`
-  if (Math.abs(deltaDays) < 7) return `${deltaDays}d ago`
+  if (Math.abs(deltaMinutes) < 60) return `${deltaMinutes}m`
+  if (Math.abs(deltaHours) < 24) return `${deltaHours}h`
+  if (Math.abs(deltaDays) < 7) return `${deltaDays}d`
   return new Date(isoString).toLocaleDateString()
 }
 
@@ -201,86 +204,93 @@ export function ProductModelNav({ items }: { items: NavTreeItem[] }) {
   }, [items])
 
   return (
-    <Tabs defaultValue="tree">
-      <TabsList>
-        <TabsTrigger value="tree" className="text-xs" aria-label="Tree" title="Tree">
-          <FolderTree />
-          <span className="sr-only">Tree</span>
-        </TabsTrigger>
-        <TabsTrigger value="type" className="text-xs" aria-label="By type" title="By type">
-          <Layers />
-          <span className="sr-only">By type</span>
-        </TabsTrigger>
-        <TabsTrigger value="recent" className="text-xs" aria-label="Recently edited" title="Recently edited">
-          <Clock />
-          <span className="sr-only">Recently edited</span>
-        </TabsTrigger>
-      </TabsList>
+    <SidebarGroup>
+      <Tabs defaultValue="tree" className="gap-1">
+        <SidebarGroupLabel className="justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate">Product model</span>
+          <TabsList className="h-7 shrink-0">
+            <TabsTrigger value="tree" className="text-xs" aria-label="Tree" title="Tree">
+              <FolderTree />
+              <span className="sr-only">Tree</span>
+            </TabsTrigger>
+            <TabsTrigger value="type" className="text-xs" aria-label="By type" title="By type">
+              <Layers />
+              <span className="sr-only">By type</span>
+            </TabsTrigger>
+            <TabsTrigger value="recent" className="text-xs" aria-label="Recently edited" title="Recently edited">
+              <Clock />
+              <span className="sr-only">Recently edited</span>
+            </TabsTrigger>
+          </TabsList>
+        </SidebarGroupLabel>
 
-      <TabsContent value="tree">
-        <SidebarMenu>
-          {items.map((item) => (
-            <Tree key={item.id} item={item} />
-          ))}
-        </SidebarMenu>
-      </TabsContent>
+        <SidebarGroupContent>
+          <TabsContent value="tree">
+            <SidebarMenu>
+              {items.map((item) => (
+                <Tree key={item.id} item={item} />
+              ))}
+            </SidebarMenu>
+          </TabsContent>
 
-      <TabsContent value="type">
-        <SidebarMenu>
-          <NavTypeGroup
-            label="Product models"
-            items={nav.byType["ProductModel"] ?? []}
-            defaultOpen
-          />
-          <NavTypeGroup
-            label="Assemblies"
-            items={nav.byType["Assembly"] ?? []}
-          />
-          <NavTypeGroup
-            label="Positions"
-            items={nav.byType["Position"] ?? []}
-          />
-          <NavTypeGroup
-            label="Variants"
-            items={[
-              ...(nav.byType["ModuleVariant"] ?? []),
-              ...(nav.byType["AssemblyVariant"] ?? []),
-            ]}
-          />
-        </SidebarMenu>
-      </TabsContent>
+          <TabsContent value="type">
+            <SidebarMenu>
+              <NavTypeGroup
+                label="Product models"
+                items={nav.byType["ProductModel"] ?? []}
+                defaultOpen
+              />
+              <NavTypeGroup
+                label="Assemblies"
+                items={nav.byType["Assembly"] ?? []}
+              />
+              <NavTypeGroup
+                label="Positions"
+                items={nav.byType["Position"] ?? []}
+              />
+              <NavTypeGroup
+                label="Variants"
+                items={[
+                  ...(nav.byType["ModuleVariant"] ?? []),
+                  ...(nav.byType["AssemblyVariant"] ?? []),
+                ]}
+              />
+            </SidebarMenu>
+          </TabsContent>
 
-      <TabsContent value="recent">
-        <SidebarMenu>
-          {nav.recent.length ? (
-            nav.recent.map((node) => (
-              <SidebarMenuItem key={getNavTreeNodeKey(node)}>
-                <SidebarMenuButton className="items-center">
-                  <File />
-                  <span className="min-w-0 flex-1 truncate">
-                    {node.item.name}
-                  </span>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {node.item.updatedAt ? formatRelativeTime(node.item.updatedAt) : ""}
-                  </span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))
-          ) : (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                className="h-auto items-start py-2"
-                disabled
-              >
-                <File />
-                <span className="min-w-0 flex-1 whitespace-normal break-words text-muted-foreground">
-                  No recent edits
-                </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-        </SidebarMenu>
-      </TabsContent>
-    </Tabs>
+          <TabsContent value="recent">
+            <SidebarMenu>
+              {nav.recent.length ? (
+                nav.recent.map((node) => (
+                  <SidebarMenuItem key={getNavTreeNodeKey(node)}>
+                    <SidebarMenuButton className="items-center">
+                      <File />
+                      <span className="min-w-0 flex-1 truncate">
+                        {node.item.name}
+                      </span>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {node.item.updatedAt ? formatRelativeTime(node.item.updatedAt) : ""}
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              ) : (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="h-auto items-start py-2"
+                    disabled
+                  >
+                    <File />
+                    <span className="min-w-0 flex-1 whitespace-normal break-words text-muted-foreground">
+                      No recent edits
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </TabsContent>
+        </SidebarGroupContent>
+      </Tabs>
+    </SidebarGroup>
   )
 }

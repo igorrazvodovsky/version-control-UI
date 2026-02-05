@@ -472,7 +472,7 @@ export function ArticleDetailProvider({ slug, children }: ArticleDetailProviderP
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to switch branches."
       toast({
-        title: "Branch switch failed",
+        title: "Ticket switch failed",
         description: message,
         variant: "destructive",
       })

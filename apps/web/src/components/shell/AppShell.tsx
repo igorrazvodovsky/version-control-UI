@@ -29,9 +29,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -172,7 +169,7 @@ function AppShellInner(
       const current = await fetchCurrentBranch({ baseUrl: apiBaseUrl, requestInit: { cache: "no-store" } })
       setShellCurrentBranch(current.branch)
       setShellSelectedBranch(current.branch.name)
-      toast({ title: "Branch switched", description: `Now on ${current.branch.label ?? current.branch.name}.` })
+      toast({ title: "Ticket switched", description: `Now on ${current.branch.label ?? current.branch.name}.` })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to switch branches."
       toast({ title: "Switch failed", description: message, variant: "destructive" })
@@ -234,24 +231,18 @@ function AppShellInner(
             </SidebarMenu>
           </SidebarHeader>
 
-            <SidebarContent>
+          <SidebarContent>
             <NavMain items={navGroups} />
-	          <SidebarGroup>
-              <SidebarGroupLabel>Product model</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <ProductModelNav items={navMockTree} />
-              </SidebarGroupContent>
-            </SidebarGroup>
-            </SidebarContent>
-            <SidebarFooter>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <AdminMenu />
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarFooter>
-
-	        </Sidebar>
+            <ProductModelNav items={navMockTree} />
+          </SidebarContent>
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <AdminMenu />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex items-center justify-between border-border bg-background px-4 py-3">
