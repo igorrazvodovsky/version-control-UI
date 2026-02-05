@@ -47,8 +47,14 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-  SidebarFooter
+  SidebarFooter,
+  SidebarMenuSub
 } from "@/components/ui/sidebar"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Calculator,
   Calendar,
@@ -69,13 +75,60 @@ import {
   Plus,
   Pencil,
   PanelRightOpen,
-  PanelRightClose
+  PanelRightClose,
+  File,
+  Folder
 } from "lucide-react"
 import { DEFAULT_API_BASE_URL } from "@/lib/articles"
 import { cn } from "@/lib/utils"
 import { fetchBranches, fetchCurrentBranch, switchBranch, type VersionControlBranch } from "@/lib/version-control"
 import { navGroups, workspaceOptions } from "@/components/shell/nav"
 import { toast } from "@/hooks/use-toast"
+import { NavMain } from "../nav-main"
+
+// This is sample data.
+const data = {
+  changes: [
+    {
+      file: "README.md",
+      state: "M",
+    },
+    {
+      file: "api/hello/route.ts",
+      state: "U",
+    },
+    {
+      file: "app/layout.tsx",
+      state: "M",
+    },
+  ],
+  tree: [
+    [
+      "app",
+      [
+        "api",
+        ["hello", ["route.ts"]],
+        "page.tsx",
+        "layout.tsx",
+        ["blog", ["page.tsx"]],
+      ],
+    ],
+    [
+      "components",
+      ["ui", "button.tsx", "card.tsx"],
+      "header.tsx",
+      "footer.tsx",
+    ],
+    ["lib", ["util.ts"]],
+    ["public", "favicon.ico", "vercel.svg"],
+    ".eslintrc.json",
+    ".gitignore",
+    "next.config.js",
+    "tailwind.config.js",
+    "package.json",
+    "README.md",
+  ],
+}
 
 type AppShellProps = {
   children: React.ReactNode
@@ -357,25 +410,19 @@ function AppShellInner(
             </SidebarMenu>
           </SidebarHeader>
 
-          <SidebarContent>
-            {navGroups.map((group) => (
-              <SidebarGroup key={group.label}>
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => (
-                      <SidebarMenuItem key={item.label}>
-                        <SidebarMenuButton isActive={item.isActive} tooltip={item.tooltip ?? item.label}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-	            ))}
-	          </SidebarContent>
+            <SidebarContent>
+            <NavMain items={navGroups} />
+	          <SidebarGroup>
+              <SidebarGroupLabel>Product model</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {data.tree.map((item, index) => (
+                    <Tree key={index} item={item} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            </SidebarContent>
             <SidebarFooter>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -545,4 +592,46 @@ function AppShellInner(
   )
 
   return shell
+}
+
+type TreeItem = string | TreeItem[]
+
+function Tree({ item }: { item: TreeItem }) {
+  const [name, ...items] = Array.isArray(item) ? item : [item]
+
+  if (!items.length) {
+    return (
+      <SidebarMenuButton
+        isActive={name === "button.tsx"}
+        className="data-[active=true]:bg-transparent"
+      >
+        <File />
+        {name}
+      </SidebarMenuButton>
+    )
+  }
+
+  return (
+    <SidebarMenuItem>
+      <Collapsible
+        className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
+        defaultOpen={name === "components" || name === "ui"}
+      >
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton>
+            <ChevronRight className="transition-transform" />
+            <Folder />
+            {name}
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {items.map((subItem, index) => (
+              <Tree key={index} item={subItem} />
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </Collapsible>
+    </SidebarMenuItem>
+  )
 }
