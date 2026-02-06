@@ -50,7 +50,7 @@ import {
 import { DEFAULT_API_BASE_URL } from "@/lib/articles"
 import { cn } from "@/lib/utils"
 import { fetchBranches, fetchCurrentBranch, switchBranch, type VersionControlBranch } from "@/lib/version-control"
-import { navGroups, navMockTree, workspaceOptions } from "@/components/shell/nav"
+import { navGroups, workspaceOptions, type NavTreeItem } from "@/components/shell/nav"
 import { ProductModelNav } from "@/components/shell/product-model-nav"
 import { toast } from "@/hooks/use-toast"
 import { NavMain } from "../nav-main"
@@ -96,6 +96,7 @@ function AppShellInner(
   const [shellBranchesLoading, setShellBranchesLoading] = useState(false)
   const [shellSelectedBranch, setShellSelectedBranch] = useState<string | null>(null)
   const [shellCurrentBranch, setShellCurrentBranch] = useState<VersionControlBranch | null>(null)
+  const [navTree, setNavTree] = useState<NavTreeItem[] | null>(null)
 
   useEffect(() => {
     if (isTicketContext) return
@@ -131,6 +132,23 @@ function AppShellInner(
     }
   }, [apiBaseUrl, isTicketContext])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadNavTree = async () => {
+      const module = await import("@/components/shell/fixtures/nav-mock-tree.json")
+      if (!cancelled) {
+        setNavTree(module.default as NavTreeItem[])
+      }
+    }
+
+    void loadNavTree()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const branches = isTicketContext ? detail?.branches ?? [] : shellBranches
   const branchesLoading = isTicketContext ? detail?.branchesLoading ?? false : shellBranchesLoading
   const selectedBranch = isTicketContext ? detail?.selectedBranch ?? null : shellSelectedBranch
@@ -163,6 +181,7 @@ function AppShellInner(
 
   const handleShellBranchSelect = async (name: string) => {
     if (shellSelectedBranch === name) return
+    const previousSelection = shellSelectedBranch
     setShellSelectedBranch(name)
     try {
       await switchBranch({ baseUrl: apiBaseUrl, name })
@@ -171,6 +190,7 @@ function AppShellInner(
       setShellSelectedBranch(current.branch.name)
       toast({ title: "Ticket switched", description: `Now on ${current.branch.label ?? current.branch.name}.` })
     } catch (err) {
+      setShellSelectedBranch(previousSelection)
       const message = err instanceof Error ? err.message : "Unable to switch branches."
       toast({ title: "Switch failed", description: message, variant: "destructive" })
     }
@@ -233,7 +253,7 @@ function AppShellInner(
 
           <SidebarContent>
             <NavMain items={navGroups} />
-            <ProductModelNav items={navMockTree} />
+            {navTree ? <ProductModelNav items={navTree} /> : null}
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>

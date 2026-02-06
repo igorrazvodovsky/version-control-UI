@@ -7,7 +7,23 @@ const kvPath = import.meta.main
     ? (Deno.env.get("APP_KV_PATH") ?? "tmp/app-state.kv")
     : undefined;
 
-const kv = kvPath ? await Deno.openKv(kvPath) : undefined;
+let kv: Deno.Kv | undefined;
+if (kvPath) {
+    if (typeof Deno.openKv === "function") {
+        try {
+            kv = await Deno.openKv(kvPath);
+        } catch (error) {
+            console.warn(
+                `Failed to open Deno KV at ${kvPath}; persistence disabled.`,
+                error,
+            );
+        }
+    } else {
+        console.warn(
+            "Deno.openKv is unavailable; run with --unstable-kv or upgrade Deno. Persistence disabled.",
+        );
+    }
+}
 
 const appPromise = createApp({ kv });
 
